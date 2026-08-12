@@ -59,7 +59,7 @@ own tested FVP source. Do not replace this with an unverified constraint and
 still treat the SPM smoke build as equivalent.
 
 The macOS Runner also invokes
-`packages/f_videoplayer_fvp/tool/sanitize_mdk_macos.sh` after Flutter
+`Flutter/ephemeral/Packages/.packages/fvp/tool/sanitize_mdk_macos.sh` after Flutter
 embeds native frameworks. That phase removes only `/opt/homebrew/lib` and
 `/usr/local/lib` from the embedded MDK binary, verifies their absence, and
 re-signs the framework with the active Xcode identity before final app signing.

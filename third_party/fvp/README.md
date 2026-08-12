@@ -90,7 +90,12 @@ find . -name Podfile.lock -delete
 rm -rf {mac,i}os/Pods
 ```
 
-For other platforms, set environment var `FVP_DEPS_LATEST=1` and rebuilt, will upgrade to the latest sdk. If fvp is installed from pub.dev, run `flutter pub cache clean` is another option.
+This fork pins non-Apple native archives to MDK 0.37.0 and verifies their
+SHA-256 before extraction. `FVP_DEPS_LATEST` is intentionally disabled. An
+audited mirror or version override must provide both an HTTPS `FVP_DEPS_URL`
+and the exact selected archive hash in `FVP_DEPS_SHA256`. Update the package
+name, version, checksum table, Apple package checksum, notices, and native
+build matrix together when upgrading.
 
 
 # Design

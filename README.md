@@ -60,8 +60,9 @@ contract used on Android and Apple platforms.
 
 ## Install from Git
 
-Pin all packages and the FVP override to the same release tag or immutable
-commit:
+Pin all packages and the FVP override to the same release tag. The adapter's
+core dependency deliberately uses that tag too, which keeps Pub's Git source
+identity consistent across the monorepo packages:
 
 ```yaml
 dependencies:
@@ -94,6 +95,11 @@ dependency_overrides:
 
 Applications using only the official Android, iOS, macOS, and web backends
 should omit both FVP entries so its native runtime is not added to artifacts.
+
+For development from `master` or a specific commit, add an application-level
+`dependency_overrides` entry for `f_videoplayer` using the same Git ref. Pub
+otherwise treats a tag, branch, and commit as distinct sources even when they
+resolve to the same object.
 
 ## Basic player
 
