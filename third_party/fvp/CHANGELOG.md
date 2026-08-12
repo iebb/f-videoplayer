@@ -1,3 +1,9 @@
+# 0.37.3+fvideo.3
+
+* build the Apple Swift package as a static product and delegate Flutter engine
+  linkage to Flutter's generated `FlutterFramework` product instead of
+  redundantly requesting Flutter and FlutterMacOS frameworks
+
 # 0.37.3+fvideo.2
 
 * pin every downloaded MDK 0.37.0 archive to its official SHA-256 and reject

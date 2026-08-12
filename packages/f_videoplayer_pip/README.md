@@ -17,6 +17,13 @@ remote play/pause actions, and final position.
   browser PiP or an always-on-top mini-player through the core presentation
   callbacks without misrepresenting it as this native contract.
 
+## Protected content
+
+v0.4.2 does not configure FairPlay, Widevine, PlayReady, license challenges, or
+protected offline keys. Protected-content PiP therefore requires a future
+DRM-capable active backend and a positive runtime capability decision; the URI
+fallback alone is not a DRM handoff.
+
 ## Android host integration
 
 Set `android:supportsPictureInPicture="true"` on the Flutter activity. Forward

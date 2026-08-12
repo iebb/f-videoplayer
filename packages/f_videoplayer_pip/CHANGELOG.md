@@ -1,3 +1,8 @@
+## 0.4.2
+
+- Coordinated the Picture-in-Picture package with the corrected standalone
+  Apple Swift Package Manager release.
+
 ## 0.4.1
 
 - Kept Android PiP session identity alive while an active stop waits for the

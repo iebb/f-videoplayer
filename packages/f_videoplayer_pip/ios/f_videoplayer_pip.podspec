@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'f_videoplayer_pip'
-  s.version          = '0.4.0'
+  s.version          = '0.4.2'
   s.summary          = 'Native Picture-in-Picture sessions for F Video Player.'
   s.description      = <<-DESC
 F Video Player's included native Picture-in-Picture implementation.

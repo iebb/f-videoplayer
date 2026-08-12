@@ -31,7 +31,7 @@ dependency_overrides:
 
 Dependency overrides are not inherited from this adapter, so the final
 application must declare the override. This repository's iOS/macOS SPM builds
-use `third_party/fvp` version `0.37.3+fvideo.2`, including its current privacy
+use `third_party/fvp` version `0.37.3+fvideo.3`, including its current privacy
 resource, binary-target, and Apple framework-link fixes. A different upstream
 version or fork may be valid, but it is a different native artifact and must be
 verified with both iOS and macOS SPM builds.
@@ -93,6 +93,13 @@ web backend remains active.
 The adapter is optional, but adding it makes FVP discoverable as a native Apple
 plugin even when `platforms` selects only Linux and Windows. Runtime selection
 does not remove native plugins from iOS/macOS dependency resolution.
+
+Version 0.4.2 fixes the macOS Swift Package Manager link failure caused by
+requesting `FlutterMacOS.framework` twice. The FVP target now depends on
+Flutter's generated `FlutterFramework` product, is emitted as a static library,
+and does not also declare direct `Flutter` or `FlutterMacOS` linker settings.
+That combination lets the host link Flutter engine symbols exactly once;
+native AVKit and rendering frameworks remain explicit.
 
 For the repository-tested SPM path:
 

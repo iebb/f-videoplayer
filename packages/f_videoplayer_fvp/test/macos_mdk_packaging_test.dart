@@ -3,6 +3,48 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Apple SPM delegates Flutter linkage to FlutterFramework product', () {
+    final manifest = File(
+      '../../third_party/fvp/darwin/fvp/Package.swift',
+    ).readAsStringSync();
+
+    expect(
+      manifest,
+      contains(
+        '.package(name: "FlutterFramework", path: "../FlutterFramework")',
+      ),
+    );
+    expect(
+      manifest,
+      contains(
+        '.product(name: "FlutterFramework", package: "FlutterFramework")',
+      ),
+    );
+    expect(
+      manifest,
+      contains('.library(name: "fvp", type: .static, targets: ["fvp"])'),
+    );
+    expect(manifest, isNot(contains('type: .dynamic')));
+    expect(manifest, isNot(contains('.linkedFramework("Flutter"')));
+    expect(manifest, isNot(contains('.linkedFramework("FlutterMacOS"')));
+
+    // Native Apple SDK frameworks remain explicit because the generated
+    // FlutterFramework product supplies only Flutter's engine framework.
+    expect(
+      manifest,
+      contains('.linkedFramework("UIKit", .when(platforms: [.iOS]))'),
+    );
+    for (final framework in [
+      'AVFoundation',
+      'AVKit',
+      'CoreMedia',
+      'CoreVideo',
+      'Metal',
+    ]) {
+      expect(manifest, contains('.linkedFramework("$framework")'));
+    }
+  });
+
   test('macOS hosts sanitize embedded MDK before final app signing', () {
     final script = File(
       '../../third_party/fvp/darwin/fvp/tool/sanitize_mdk_macos.sh',

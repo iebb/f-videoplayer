@@ -42,6 +42,9 @@ thumbnail provider requires those minimums.
 The iOS and macOS hosts are intentionally Swift Package Manager-only. They do
 not contain Podfiles; adding one makes Flutter invoke CocoaPods and stops this
 example from validating the SPM-only integration path.
+The pinned FVP fork delegates Flutter engine linkage to the generated
+`FlutterFramework` Swift package product and emits FVP as a static library,
+avoiding both duplicate and undefined Flutter symbols in version 0.4.2.
 
 Enable SPM before resolving/building either Apple host:
 
@@ -53,7 +56,7 @@ flutter build macos --debug
 ```
 
 The example's `dependency_overrides` pins FVP to
-`../../../third_party/fvp` (`0.37.3+fvideo.2`). Overrides from a dependency are
+`../../../third_party/fvp` (`0.37.3+fvideo.3`). Overrides from a dependency are
 not inherited, so an application copying the optional adapter must declare its
 own tested FVP source. Do not replace this with an unverified constraint and
 still treat the SPM smoke build as equivalent.

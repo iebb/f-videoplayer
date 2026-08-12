@@ -1,3 +1,8 @@
+## 0.4.2
+
+- Coordinated the standalone packages with the corrected FVP Apple Swift
+  Package Manager integration.
+
 ## 0.4.1
 
 - Coordinated the standalone core package with the first production-tagged

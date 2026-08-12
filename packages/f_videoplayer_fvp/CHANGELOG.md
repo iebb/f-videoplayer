@@ -1,3 +1,12 @@
+## 0.4.2
+
+- Made the FVP Apple Swift package a static product and removed redundant
+  explicit Flutter framework linker settings; Flutter's generated
+  `FlutterFramework` product now supplies engine symbols exactly once on both
+  iOS and macOS.
+- Validated the `0.37.3+fvideo.3` FVP fork and added a packaging regression
+  check for the linker contract.
+
 ## 0.4.1
 
 - Published the standalone adapter against the matching `f_videoplayer`
@@ -12,4 +21,4 @@
 - Kept FVP optional so the core player does not force native FVP binaries into
   applications that use only official `video_player` implementations.
 - Documented per-engine/process-wide initialization rules and the repository's
-  validated `0.37.3+fvideo.2` Apple Swift Package Manager override.
+  validated `0.37.3+fvideo.1` Apple Swift Package Manager override.
