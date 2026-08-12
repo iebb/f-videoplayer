@@ -1,0 +1,41 @@
+name: f_videoplayer_fvp
+description: Optional FVP playback backend adapter for f_videoplayer.
+version: 0.4.0
+publish_to: none
+homepage: https://github.com/iebb/f-videoplayer
+repository: https://github.com/iebb/f-videoplayer
+issue_tracker: https://github.com/iebb/f-videoplayer/issues
+topics:
+  - video
+  - media
+  - player
+  - fvp
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  fvp: ^0.37.3
+  f_videoplayer:
+    git:
+      url: https://github.com/iebb/f-videoplayer.git
+      ref: v0.4.0
+      path: packages/f_videoplayer
+  video_player_platform_interface: any
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: false
+
+# Repository development only. Dependency overrides are intentionally ignored
+# by applications consuming this package, where the app pins f_videoplayer and
+# f_videoplayer_fvp to the same Git release.
+dependency_overrides:
+  f_videoplayer:
+    path: ../f_videoplayer

@@ -1,0 +1,40 @@
+name: f_videoplayer_example
+description: Embedded and independent-window examples for f_videoplayer.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  # FVP must be direct for its native assets on Flutter 3.27 and newer.
+  fvp: ^0.37.3
+  flutter:
+    sdk: flutter
+  f_videoplayer:
+    path: ../
+  f_videoplayer_fvp:
+    path: ../../f_videoplayer_fvp
+  f_videoplayer_pip:
+    path: ../../f_videoplayer_pip
+  video_player: ^2.13.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+dependency_overrides:
+  # Keep repository development source-local even though the adapter points to
+  # the matching public Git release.
+  f_videoplayer:
+    path: ../
+  # Repository-only: compile-smoke the exact F Video Player FVP fork used by the host
+  # app. Consumers of the optional adapter continue to resolve hosted FVP.
+  fvp:
+    path: ../../../third_party/fvp
+
+flutter:
+  config:
+    enable-swift-package-manager: true
+  uses-material-design: false

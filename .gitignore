@@ -1,0 +1,17 @@
+.dart_tool/
+.idea/
+.vscode/
+.DS_Store
+build/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/android/.gradle/
+**/android/.cxx/
+**/android/local.properties
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+third_party/fvp/**/mdk-sdk/
+third_party/fvp/**/mdk-sdk-*.7z

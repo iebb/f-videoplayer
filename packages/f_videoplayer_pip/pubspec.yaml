@@ -1,0 +1,36 @@
+name: f_videoplayer_pip
+description: Native Picture-in-Picture sessions for F Video Player.
+publish_to: none
+version: 0.4.0
+homepage: https://github.com/iebb/f-videoplayer
+repository: https://github.com/iebb/f-videoplayer
+issue_tracker: https://github.com/iebb/f-videoplayer/issues
+topics:
+  - video
+  - picture-in-picture
+  - media
+  - player
+
+environment:
+  sdk: ^3.12.2
+  flutter: '>=3.44.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.iebb.f_videoplayer_pip
+        pluginClass: FVideoPictureInPicturePlugin
+      ios:
+        pluginClass: FVideoPictureInPicturePlugin
+      macos:
+        pluginClass: FVideoPictureInPicturePlugin
