@@ -197,6 +197,7 @@ void main() {
         expect(volumeRect.width, size.width >= 700 ? 92 : 72);
         expect(playerRect.contains(volumeRect.topLeft), isTrue);
         expect(playerRect.contains(volumeRect.bottomRight), isTrue);
+        expect(_semanticsWidget('Play'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
 
@@ -215,8 +216,32 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      final narrowVolume = tester.getRect(_sliderWithLabel('Volume'));
+      expect(narrowVolume.size, const Size(72, 44));
+      expect(_semanticsWidget('Mute'), findsOneWidget);
+      expect(_semanticsWidget('Play'), findsOneWidget);
+      expect(_semanticsWidget('Fullscreen'), findsNothing);
+      expect(_semanticsWidget('Picture in picture'), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(
+        _frame(
+          FVideoPlayer(
+            source: _source('responsive-volume'),
+            controller: controller,
+            autoplay: false,
+            onFullscreenChanged: (_) {},
+            onPictureInPictureChanged: (_) {},
+          ),
+          width: 110,
+          height: 300,
+        ),
+      );
+      await tester.pumpAndSettle();
+
       expect(_sliderWithLabel('Volume'), findsNothing);
       expect(_semanticsWidget('Mute'), findsOneWidget);
+      expect(_semanticsWidget('Play'), findsOneWidget);
       expect(_semanticsWidget('Fullscreen'), findsNothing);
       expect(_semanticsWidget('Picture in picture'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -329,6 +354,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_semanticsWidget('Previous episode'), findsOneWidget);
+    expect(_semanticsWidget('Play'), findsOneWidget);
     expect(_semanticsWidget('Next episode'), findsOneWidget);
     final semantics = tester.ensureSemantics();
     tester.semantics.tap(find.semantics.byLabel('Previous episode'));
@@ -760,11 +786,7 @@ void main() {
         'Exit fullscreen',
       ]) {
         final control = _semanticsWidget(label);
-        expect(
-          control,
-          label == 'Play' ? findsWidgets : findsOneWidget,
-          reason: '$label is available',
-        );
+        expect(control, findsOneWidget, reason: '$label is available once');
         final rect = tester.getRect(control.first);
         expect(player.contains(rect.topLeft), isTrue, reason: '$label top');
         expect(
@@ -1049,6 +1071,62 @@ void main() {
   );
 
   testWidgets(
+    'presentation buttons can hide without disabling actions or shortcuts',
+    (tester) async {
+      final controller = _FakeVideoPlayerController();
+      final pictureInPictureRequests = <bool>[];
+      final fullscreenRequests = <bool>[];
+      FVideoChromeScope? scope;
+
+      await tester.pumpWidget(
+        _frame(
+          FVideoPlayer(
+            source: _source('host-presentation-action'),
+            controller: controller,
+            autoplay: false,
+            autofocus: true,
+            showPictureInPictureButton: false,
+            showFullscreenButton: false,
+            onPictureInPictureChanged: pictureInPictureRequests.add,
+            onFullscreenChanged: fullscreenRequests.add,
+            bottomTrailingBuilder: (context, value) {
+              scope = value;
+              return const SizedBox.expand(
+                key: ValueKey('combined-presentation-action'),
+              );
+            },
+          ),
+          width: 500,
+          height: 300,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_semanticsWidget('Picture in picture'), findsNothing);
+      expect(_semanticsWidget('Fullscreen'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('combined-presentation-action')),
+        findsOneWidget,
+      );
+
+      await scope!.actions.requestPictureInPicture(true);
+      scope!.actions.requestFullscreen(true);
+      expect(pictureInPictureRequests, [true]);
+      expect(fullscreenRequests, [true]);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.pump();
+      expect(pictureInPictureRequests, [true, true]);
+      expect(fullscreenRequests, [true, true]);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await controller.dispose();
+    },
+  );
+
+  testWidgets(
     'custom chrome sees pending PiP state and disposal ignores late completion',
     (tester) async {
       final controller = _FakeVideoPlayerController();
@@ -1264,10 +1342,11 @@ void main() {
     expect(controller.value.volume, 0);
     expect(fullscreenRequests, [false]);
 
-    final playerCenter = tester.getCenter(find.byType(FVideoPlayer));
-    await tester.tapAt(playerCenter, kind: PointerDeviceKind.mouse);
+    final player = tester.getRect(find.byType(FVideoPlayer));
+    final surfacePoint = player.topLeft + const Offset(40, 120);
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.mouse);
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.tapAt(playerCenter, kind: PointerDeviceKind.mouse);
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.mouse);
     await tester.pump(const Duration(milliseconds: 400));
     expect(fullscreenRequests, [false, false]);
 
@@ -1629,6 +1708,25 @@ void main() {
         tester.widget<ExcludeFocus>(find.byType(ExcludeFocus)).excluding,
         isTrue,
       );
+      expect(
+        tester
+            .widget<ExcludeSemantics>(find.byType(ExcludeSemantics))
+            .excluding,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<IgnorePointer>(
+              find
+                  .ancestor(
+                    of: _controlOpacityFinder,
+                    matching: find.byType(IgnorePointer),
+                  )
+                  .first,
+            )
+            .ignoring,
+        isTrue,
+      );
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
@@ -1949,17 +2047,466 @@ void main() {
     await tester.pump();
     await controller.dispose();
   });
+
+  testWidgets('passive overlay and bottom action preserve chrome hit testing', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+    var surfaceTaps = 0;
+    var bottomTaps = 0;
+    FVideoChromeScope? surfaceScope;
+    FVideoChromeScope? overlayScope;
+    FVideoChromeScope? bottomScope;
+
+    await tester.pumpWidget(
+      _frame(
+        FVideoPlayer(
+          source: _source('additive-builders'),
+          controller: controller,
+          autoplay: false,
+          interactionMode: FVideoInteractionMode.delegateToChrome,
+          surfaceInteractionBuilder: (context, scope, child) {
+            surfaceScope = scope;
+            return GestureDetector(
+              key: const ValueKey('host-surface-interaction'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => surfaceTaps++,
+              child: child,
+            );
+          },
+          overlayBuilder: (context, scope) {
+            overlayScope = scope;
+            return const IgnorePointer(
+              key: ValueKey('host-overlay'),
+              child: SizedBox.expand(),
+            );
+          },
+          bottomTrailingBuilder: (context, scope) {
+            bottomScope = scope;
+            return GestureDetector(
+              key: const ValueKey('host-bottom-action'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => bottomTaps++,
+            );
+          },
+        ),
+        width: 500,
+        height: 300,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(surfaceScope, isNotNull);
+    expect(overlayScope, isNotNull);
+    expect(bottomScope, isNotNull);
+    expect(identical(surfaceScope!.actions, overlayScope!.actions), isTrue);
+    expect(identical(surfaceScope!.actions, bottomScope!.actions), isTrue);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('host-bottom-action'))),
+      const Size.square(44),
+    );
+
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(FVideoPlayer)) + const Offset(30, 100),
+    );
+    await tester.pump();
+    expect(surfaceTaps, 1);
+
+    await tester.tap(find.byKey(const ValueKey('host-bottom-action')));
+    await tester.pump();
+    expect(bottomTaps, 1);
+    expect(surfaceTaps, 1);
+
+    await tester.tapAt(tester.getCenter(_semanticsWidget('Play').first));
+    await tester.pump();
+    expect(controller.value.isPlaying, isTrue);
+    expect(surfaceTaps, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await controller.dispose();
+  });
+
+  testWidgets('interactive overlay intercepts chrome and surface input', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+    var overlayTaps = 0;
+    var surfaceTaps = 0;
+
+    await tester.pumpWidget(
+      _frame(
+        FVideoPlayer(
+          source: _source('interactive-overlay'),
+          controller: controller,
+          autoplay: false,
+          surfaceInteractionBuilder: (context, scope, child) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => surfaceTaps++,
+            child: child,
+          ),
+          overlayBuilder: (context, scope) => GestureDetector(
+            key: const ValueKey('blocking-overlay'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => overlayTaps++,
+          ),
+        ),
+        width: 500,
+        height: 300,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tapAt(tester.getCenter(_semanticsWidget('Play').first));
+    await tester.pump();
+    expect(overlayTaps, 1);
+    expect(surfaceTaps, 0);
+    expect(controller.playCalls, 0);
+
+    await tester.tapAt(
+      tester.getTopLeft(find.byType(FVideoPlayer)) + const Offset(30, 100),
+    );
+    await tester.pump();
+    expect(overlayTaps, 2);
+    expect(surfaceTaps, 0);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await controller.dispose();
+  });
+
+  testWidgets('surface interaction keeps built-in gestures behind controls', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+    var horizontalDrags = 0;
+    Offset? dragOrigin;
+
+    await tester.pumpWidget(
+      _frame(
+        FVideoPlayer(
+          source: _source('surface-interaction-layer'),
+          controller: controller,
+          autoplay: false,
+          surfaceInteractionBuilder: (context, scope, child) => GestureDetector(
+            key: const ValueKey('swipe-surface'),
+            behavior: HitTestBehavior.opaque,
+            onPanDown: (details) => dragOrigin = details.localPosition,
+            onPanStart: (_) {
+              horizontalDrags++;
+              scope.actions.showControls();
+            },
+            onPanUpdate: (_) {},
+            onPanEnd: (_) => dragOrigin = null,
+            onPanCancel: () => dragOrigin = null,
+            child: child,
+          ),
+        ),
+        width: 500,
+        height: 300,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final player = tester.getRect(find.byType(FVideoPlayer));
+    final surfacePoint = player.topLeft + const Offset(40, 100);
+    expect(_controlOpacity(tester), 1);
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 0);
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 1);
+    expect(horizontalDrags, 0);
+
+    final surfaceGesture = await tester.startGesture(surfacePoint);
+    await surfaceGesture.moveBy(const Offset(80, 0));
+    await surfaceGesture.up();
+    await tester.pump();
+    expect(horizontalDrags, 1);
+    expect(dragOrigin, isNull);
+    expect(_controlOpacity(tester), 1);
+
+    final timelineGesture = await tester.startGesture(
+      tester.getCenter(_sliderWithLabel('Playback position')),
+    );
+    await timelineGesture.moveBy(const Offset(50, 0));
+    await timelineGesture.up();
+    await tester.pump();
+    expect(horizontalDrags, 1);
+
+    final positionBeforeDoubleTap = controller.value.position;
+    final seekPoint = player.topLeft + const Offset(410, 100);
+    await tester.tapAt(seekPoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tapAt(seekPoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      controller.value.position,
+      positionBeforeDoubleTap + const Duration(seconds: 10),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await controller.dispose();
+  });
+
+  testWidgets('buffer override augments backend buffering and is validated', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+
+    Widget player(double override) => _frame(
+      FVideoPlayer(
+        source: _source('buffer-override'),
+        controller: controller,
+        autoplay: false,
+        bufferedFractionOverride: override,
+      ),
+      width: 500,
+      height: 300,
+    );
+
+    await tester.pumpWidget(player(0.6));
+    await tester.pumpAndSettle();
+    controller.emit(
+      buffered: [DurationRange(Duration.zero, const Duration(seconds: 30))],
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<FVideoSlider>(_sliderWithLabel('Playback position'))
+          .bufferedValue,
+      0.6,
+    );
+
+    await tester.pumpWidget(player(0.1));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FVideoSlider>(_sliderWithLabel('Playback position'))
+          .bufferedValue,
+      0.25,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await controller.dispose();
+  });
+
+  test('buffer and external volume fractions reject out-of-range values', () {
+    expect(
+      () => FVideoPlayer(
+        source: _source('invalid-buffer-override'),
+        bufferedFractionOverride: 1.1,
+      ),
+      throwsAssertionError,
+    );
+    expect(
+      () => FVideoPlayer(
+        source: _source('invalid-external-volume'),
+        externalVolume: -0.1,
+      ),
+      throwsAssertionError,
+    );
+  });
+
+  testWidgets(
+    'external volume is authoritative and rejects stale or invalid results',
+    (tester) async {
+      final controller = _FakeVideoPlayerController();
+      final firstRequest = Completer<double>();
+      final secondRequest = Completer<double>();
+      final requests = <double>[];
+      final reported = <double>[];
+      final errors = <FVideoPlayerError>[];
+      FVideoChromeScope? scope;
+
+      Future<double> delegate(double requested) {
+        requests.add(requested);
+        return requests.length == 1
+            ? firstRequest.future
+            : secondRequest.future;
+      }
+
+      Widget player({
+        required double externalVolume,
+        FVideoVolumeDelegate? volumeDelegate,
+      }) => _frame(
+        FVideoPlayer(
+          key: const ValueKey('external-volume-player'),
+          source: _source('external-volume'),
+          controller: controller,
+          autoplay: false,
+          externalVolume: externalVolume,
+          volumeDelegate: volumeDelegate ?? delegate,
+          onVolumeChanged: reported.add,
+          onError: errors.add,
+          overlayBuilder: (context, value) {
+            scope = value;
+            return const IgnorePointer(child: SizedBox.expand());
+          },
+        ),
+        width: 500,
+        height: 300,
+      );
+
+      await tester.pumpWidget(player(externalVolume: 0.7));
+      await tester.pumpAndSettle();
+      expect(controller.setVolumeCalls, 0);
+      expect(controller.value.volume, 1);
+      expect(scope!.snapshot.volume, 0.7);
+      expect(
+        tester.widget<FVideoSlider>(_sliderWithLabel('Volume')).value,
+        0.7,
+      );
+
+      final first = scope!.actions.setVolume(0.2);
+      final second = scope!.actions.setVolume(0.8);
+      expect(requests, [0.2, 0.8]);
+      secondRequest.complete(0.75);
+      await second;
+      await tester.pump();
+      expect(scope!.snapshot.volume, 0.75);
+      expect(reported, [0.75]);
+      expect(controller.setVolumeCalls, 0);
+
+      firstRequest.complete(0.1);
+      await first;
+      await tester.pump();
+      expect(scope!.snapshot.volume, 0.75);
+      expect(reported, [0.75]);
+
+      controller.emit(volume: 0.15);
+      await tester.pump();
+      expect(scope!.snapshot.value.volume, 0.15);
+      expect(scope!.snapshot.volume, 0.75);
+      expect(reported, [0.75]);
+
+      await tester.pumpWidget(player(externalVolume: 0.55));
+      await tester.pump();
+      expect(scope!.snapshot.volume, 0.55);
+      expect(controller.setVolumeCalls, 0);
+
+      await tester.pumpWidget(
+        player(externalVolume: 0.55, volumeDelegate: (_) => 1.2),
+      );
+      await tester.pump();
+      await scope!.actions.setVolume(0.4);
+      await tester.pump();
+      expect(scope!.snapshot.volume, 0.55);
+      expect(errors, hasLength(1));
+      expect(errors.single.cause, isA<StateError>());
+      expect(controller.setVolumeCalls, 0);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await controller.dispose();
+    },
+  );
+
+  testWidgets(
+    'disabled controls keep media and overlays but suppress input and chrome',
+    (tester) async {
+      final controller = _FakeVideoPlayerController();
+      var surfaceBuilds = 0;
+      var overlayBuilds = 0;
+      var chromeBuilds = 0;
+
+      Widget player(bool controlsEnabled) => _frame(
+        FVideoPlayer(
+          key: const ValueKey('controlled-chrome-enabled'),
+          source: _source('controls-enabled'),
+          controller: controller,
+          autoplay: false,
+          autofocus: true,
+          controlsEnabled: controlsEnabled,
+          enableScrollVolume: true,
+          videoSurfaceBuilder: (context, value) =>
+              const SizedBox.expand(key: ValueKey('playback-surface')),
+          surfaceInteractionBuilder: (context, scope, child) {
+            surfaceBuilds++;
+            return KeyedSubtree(
+              key: const ValueKey('surface-interactions'),
+              child: child,
+            );
+          },
+          overlayBuilder: (context, scope) {
+            overlayBuilds++;
+            return const IgnorePointer(
+              child: SizedBox.expand(key: ValueKey('completion-overlay')),
+            );
+          },
+          chromeBuilder: (context, scope) {
+            chromeBuilds++;
+            return const SizedBox.expand(key: ValueKey('host-chrome'));
+          },
+        ),
+        width: 500,
+        height: 300,
+      );
+
+      await tester.pumpWidget(player(false));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('playback-surface')), findsOneWidget);
+      expect(find.byKey(const ValueKey('completion-overlay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('surface-interactions')), findsNothing);
+      expect(find.byKey(const ValueKey('host-chrome')), findsNothing);
+      expect(surfaceBuilds, 0);
+      expect(overlayBuilds, greaterThan(0));
+      expect(chromeBuilds, 0);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(controller.playCalls, 0);
+      final volumeCalls = controller.setVolumeCalls;
+      await tester.sendEventToBinding(
+        PointerScrollEvent(
+          position: tester.getCenter(find.byType(FVideoPlayer)),
+          scrollDelta: const Offset(0, 20),
+          kind: PointerDeviceKind.mouse,
+        ),
+      );
+      await tester.pump();
+      expect(controller.setVolumeCalls, volumeCalls);
+
+      final center = tester.getCenter(find.byType(FVideoPlayer));
+      await tester.tapAt(center, kind: PointerDeviceKind.touch);
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.tapAt(center, kind: PointerDeviceKind.touch);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controller.playCalls, 0);
+
+      await tester.pumpWidget(player(true));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('surface-interactions')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('completion-overlay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('host-chrome')), findsOneWidget);
+      expect(surfaceBuilds, greaterThan(0));
+      expect(chromeBuilds, greaterThan(0));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      expect(controller.playCalls, 1);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await controller.dispose();
+    },
+  );
 }
 
-double _controlOpacity(WidgetTester tester) => tester
-    .widget<AnimatedOpacity>(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is AnimatedOpacity &&
-            widget.duration == const Duration(milliseconds: 170),
-      ),
-    )
-    .opacity;
+final Finder _controlOpacityFinder = find.byWidgetPredicate(
+  (widget) =>
+      widget is AnimatedOpacity &&
+      widget.duration == const Duration(milliseconds: 170),
+);
+
+double _controlOpacity(WidgetTester tester) =>
+    tester.widget<AnimatedOpacity>(_controlOpacityFinder).opacity;
 
 FVideoSource _source(String id) =>
     FVideoSource.network('https://media.example/$id.mp4');
@@ -2020,6 +2567,7 @@ class _FakeVideoPlayerController extends VideoPlayerController {
   int playCalls = 0;
   int pauseCalls = 0;
   int setLoopingCalls = 0;
+  int setVolumeCalls = 0;
   bool disposed = false;
 
   @override
@@ -2071,6 +2619,7 @@ class _FakeVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> setVolume(double volume) async {
+    setVolumeCalls++;
     value = value.copyWith(volume: volume.clamp(0.0, 1.0));
   }
 
@@ -2090,12 +2639,16 @@ class _FakeVideoPlayerController extends VideoPlayerController {
     bool? isPlaying,
     bool? isCompleted,
     Caption? caption,
+    double? volume,
+    List<DurationRange>? buffered,
   }) {
     value = value.copyWith(
       position: position,
       isPlaying: isPlaying,
       isCompleted: isCompleted,
       caption: caption,
+      volume: volume,
+      buffered: buffered,
     );
   }
 }

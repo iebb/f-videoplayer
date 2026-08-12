@@ -1,3 +1,18 @@
+## 0.5.0
+
+- Added additive surface-interaction, host-overlay, and fixed 44-pixel
+  bottom-action builders without requiring replacement chrome.
+- Composed built-in tap and double-tap handling outside additive host drag
+  wrappers so taps still toggle chrome while actual drags remain host-owned.
+- Removed the duplicate bottom-row play/pause action from regular-height
+  layouts while retaining the compact merged transport below 220 pixels.
+- Added controlled chrome suppression for native PiP capture surfaces and
+  independent visibility flags for the built-in fullscreen and PiP buttons.
+- Added host buffering augmentation and authoritative asynchronous
+  platform-volume delegation with external updates and stale-result safety.
+- Exposed effective chrome volume in `FVideoChromeSnapshot` and documented
+  overlay layering, gesture ownership, and presentation-control composition.
+
 ## 0.4.2
 
 - Coordinated the standalone packages with the corrected FVP Apple Swift

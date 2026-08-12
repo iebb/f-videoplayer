@@ -1,3 +1,8 @@
+## 0.5.0
+
+- Coordinated native PiP packaging with the core player's controlled chrome
+  suppression and host-overlay integration release.
+
 ## 0.4.2
 
 - Coordinated the Picture-in-Picture package with the corrected standalone

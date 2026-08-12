@@ -1,3 +1,9 @@
+# 0.37.3+fvideo.4
+
+- Coordinated the source-only fork version with repository release v0.5.0;
+  native runtime, static Swift-package linkage, and verified archive inputs
+  remain unchanged.
+
 # 0.37.3+fvideo.3
 
 * build the Apple Swift package as a static product and delegate Flutter engine

@@ -1,3 +1,8 @@
+## 0.5.0
+
+- Coordinated the adapter dependency and source-only FVP override with the
+  standalone player's additive host-integration release.
+
 ## 0.4.2
 
 - Made the FVP Apple Swift package a static product and removed redundant

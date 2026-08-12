@@ -28,6 +28,10 @@ through immutable state plus safe player actions.
   factory sources.
 - Play/pause, replay, previous/next, seeking, buffering, captions, playback
   speed, mute, and continuous volume controls across normal layouts.
+- Additive surface gestures, blocking/passive host overlays, one compact
+  bottom action, host buffering augmentation, and delegated system volume.
+- Controlled chrome suppression for native PiP capture plus independently
+  hideable built-in fullscreen and PiP buttons for a combined host mode action.
 - Responsive fallback that retains an accessible mute action when a tiny
   embedded surface cannot physically fit a level slider.
 - Drag, double-tap, pointer, wheel, keyboard, focus, RTL, and screen-reader
@@ -69,19 +73,19 @@ dependencies:
   f_videoplayer:
     git:
       url: https://github.com/iebb/f-videoplayer.git
-      ref: v0.4.2
+      ref: v0.5.0
       path: packages/f_videoplayer
   f_videoplayer_pip:
     git:
       url: https://github.com/iebb/f-videoplayer.git
-      ref: v0.4.2
+      ref: v0.5.0
       path: packages/f_videoplayer_pip
 
 # Add only when the final application uses FVP.
   f_videoplayer_fvp:
     git:
       url: https://github.com/iebb/f-videoplayer.git
-      ref: v0.4.2
+      ref: v0.5.0
       path: packages/f_videoplayer_fvp
   fvp: ^0.37.3
 
@@ -89,7 +93,7 @@ dependency_overrides:
   fvp:
     git:
       url: https://github.com/iebb/f-videoplayer.git
-      ref: v0.4.2
+      ref: v0.5.0
       path: third_party/fvp
 ```
 
@@ -129,7 +133,7 @@ lifecycle callbacks. The exact implementation is documented in
 
 ## DRM status
 
-DRM is architecturally possible, but it is not part of v0.4.2. Secure playback
+DRM is architecturally possible, but it is not part of v0.5.0. Secure playback
 requires separate platform backends: Media3/Widevine on Android,
 AVFoundation/FairPlay on Apple platforms, EME on web, and PlayReady or a
 browser-backed CDM on Windows. FVP/FFmpeg is not treated as a secure DRM path.

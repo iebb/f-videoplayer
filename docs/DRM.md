@@ -5,7 +5,7 @@ feature. The shared player can keep the same chrome, playlists, fullscreen,
 volume, captions, and presentation APIs while selecting a protected native
 surface for encrypted sources.
 
-v0.4.2 does not claim DRM playback support.
+v0.5.0 does not claim DRM playback support.
 
 ## Platform plan
 

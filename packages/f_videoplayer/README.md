@@ -21,6 +21,9 @@ does not require Material, Cupertino, or their built-in icon fonts.
   players retain mute before optional presentation actions whenever it fits.
 - High-contrast, configurable default transport chrome plus a safe-area-aware
   top-trailing slot for project actions and finite inline menus.
+- Exactly one play/pause action: regular-height layouts place transport in the
+  center and reserve the bottom row for audio, time, speed, and presentation;
+  layouts below 220 logical pixels merge transport into the bottom row.
 - Keyboard, pointer, touch, touch-region double-tap seek, desktop double-click
   fullscreen, opt-in mouse-wheel volume, RTL timeline, and adjustable
   screen-reader semantics.
@@ -94,11 +97,11 @@ dependency_overrides:
 ```
 
 The final application—not a transitive package—must declare that override.
-This repository validates `third_party/fvp` version `0.37.3+fvideo.3`, which
+This repository validates `third_party/fvp` version `0.37.3+fvideo.4`, which
 contains its current Apple Swift Package Manager resource/framework fixes. If
 you select a different FVP release or fork, repeat both iOS and macOS SPM
 builds; a compatible Dart constraint alone does not validate native packaging.
-The `0.37.3+fvideo.3` fork also fixes the macOS duplicate-Flutter-framework
+The `0.37.3+fvideo.4` fork also fixes the macOS duplicate-Flutter-framework
 link failure by making FVP a static Swift package product and delegating engine
 linkage to Flutter's generated `FlutterFramework` product.
 
@@ -272,7 +275,9 @@ FVideoPlayer(
 `FVideoChromeSnapshot` is immutable and includes the current
 `VideoPlayerValue`, effective scrub/display position, playback state, control
 visibility, buffering visibility, scrubbing state, fullscreen state,
-picture-in-picture state, and whether a PiP request is in flight.
+picture-in-picture state, effective chrome volume, and whether a PiP request is
+in flight. Read `scope.snapshot.volume` instead of
+`scope.snapshot.value.volume` when the host delegates system volume.
 `FVideoActions` routes commands through the player's error handling and
 provides play/pause, absolute and relative seeking, volume/mute, speed, scrub
 lifecycle, control visibility, fullscreen requests, and asynchronous
@@ -286,6 +291,19 @@ surface tap and double-tap recognizers so the two gesture systems cannot
 compete. The default `builtIn` mode preserves existing touch-region seeking and
 desktop double-click fullscreen behavior. Pointer-wheel volume and keyboard
 shortcuts remain independently controlled by their existing flags.
+
+For additive customization, `surfaceInteractionBuilder` wraps the media layer
+behind package chrome and receives both `scope` and the media-surface child.
+The package composes its built-in tap/double-tap recognizer around the returned
+widget, so an added drag recognizer wins only for an actual drag and cannot
+mask a tap. Pair the builder with `delegateToChrome` when the host needs
+exclusive surface gesture ownership.
+`overlayBuilder` paints above both the surface and chrome and stays active when
+`controlsEnabled` is false. Use an interactive overlay for completion prompts
+or popup menus that must intercept all underlying controls; wrap passive
+visuals in `IgnorePointer`. Set `controlsEnabled: false` for a native PiP
+capture surface: playback, captions, buffering, and the overlay remain, while
+chrome, surface gestures, keyboard shortcuts, and wheel volume are suppressed.
 
 Navigation remains host-owned. `onPrevious` and `onNext` are nullable; the
 default chrome renders accessible transport buttons only for available
@@ -348,6 +366,13 @@ visibility, semantics exclusion, and pointer exclusion, but the host must still
 give every child action an accurate button label and keyboard activation. It is
 ignored when `chromeBuilder` replaces the entire ready chrome.
 
+`bottomTrailingBuilder` adds exactly one 44-by-44 action to the default bottom
+row when space permits. It is intended for one compact project mode/action
+button, not a menu row. When that action combines presentation modes, set
+`showPictureInPictureButton: false` and `showFullscreenButton: false` to hide
+the package buttons without disabling callbacks, keyboard shortcuts, or
+`FVideoActions` requests.
+
 For built-in chrome shorter than 220 logical pixels, the player merges
 previous/play/next into the bottom action row and tightens its edge spacing.
 This keeps real 160x90 and 220x124 embedded players usable without overlapping
@@ -359,6 +384,17 @@ and retains mute as the fallback on micro embeds. Use `onVolumeChanged` to
 persist the selected level across playlist items or routes. Custom chrome can
 read `scope.snapshot.volume` and call `scope.actions.setVolume(...)` or
 `scope.actions.toggleMute()` without depending on platform-specific widgets.
+
+When a host owns system volume, pass `volumeDelegate`. It receives each
+normalized request and returns the normalized level actually applied; that
+returned value becomes chrome state. While delegated, the player never applies
+initial gain to the playback controller and never overwrites chrome state from
+`controller.value.volume`. Rebuild with `externalVolume` after hardware or
+system changes. Superseded asynchronous delegate results are ignored.
+
+`bufferedFractionOverride` augments incomplete backend buffering data. The
+timeline uses the greater of the normalized override and the backend's last
+buffered endpoint, so delayed host progress cannot move the track backwards.
 
 When `isFullscreen` is true, the default chrome and captions add the current
 `MediaQuery` safe-area insets to their edge spacing. Embedded layouts retain

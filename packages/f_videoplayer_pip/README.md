@@ -19,7 +19,7 @@ remote play/pause actions, and final position.
 
 ## Protected content
 
-v0.4.2 does not configure FairPlay, Widevine, PlayReady, license challenges, or
+v0.5.0 does not configure FairPlay, Widevine, PlayReady, license challenges, or
 protected offline keys. Protected-content PiP therefore requires a future
 DRM-capable active backend and a positive runtime capability decision; the URI
 fallback alone is not a DRM handoff.

@@ -40,6 +40,27 @@ typedef FVideoRetryCallback = FutureOr<void> Function();
 typedef FVideoChromeBuilder =
     Widget Function(BuildContext context, FVideoChromeScope scope);
 
+/// Wraps the video surface while leaving the package chrome above it.
+typedef FVideoSurfaceInteractionBuilder =
+    Widget Function(
+      BuildContext context,
+      FVideoChromeScope scope,
+      Widget child,
+    );
+
+/// Builds a host overlay above the interactive surface and player chrome.
+typedef FVideoOverlayBuilder =
+    Widget Function(BuildContext context, FVideoChromeScope scope);
+
+/// Builds one finite action in the default chrome's bottom action row.
+typedef FVideoBottomTrailingBuilder =
+    Widget Function(BuildContext context, FVideoChromeScope scope);
+
+/// Applies a requested normalized system/platform volume and returns the
+/// normalized volume that was actually applied.
+typedef FVideoVolumeDelegate =
+    FutureOr<double> Function(double requestedVolume);
+
 /// Builds an action or inline menu at the safe-area-aware top-trailing edge of
 /// the package's default chrome.
 ///
@@ -232,6 +253,7 @@ class FVideoChromeSnapshot {
     required this.isScrubbing,
     required this.bufferingIndicatorVisible,
     required this.isFullscreen,
+    this.volume = 1,
     this.isPictureInPicture = false,
     this.pictureInPictureRequestPending = false,
   });
@@ -243,6 +265,13 @@ class FVideoChromeSnapshot {
   final bool isScrubbing;
   final bool bufferingIndicatorVisible;
   final bool isFullscreen;
+
+  /// The volume shown by the player chrome.
+  ///
+  /// This may differ from [value].volume when a host [FVideoVolumeDelegate]
+  /// owns platform or system volume.
+  final double volume;
+
   final bool isPictureInPicture;
   final bool pictureInPictureRequestPending;
 }
@@ -385,12 +414,28 @@ class FVideoPlayer extends StatefulWidget {
     this.videoSurfaceBuilder,
     this.scrubPreviewBuilder,
     this.chromeBuilder,
+    this.surfaceInteractionBuilder,
+    this.overlayBuilder,
+    this.bottomTrailingBuilder,
     this.topTrailingBuilder,
+    this.bufferedFractionOverride,
+    this.volumeDelegate,
+    this.externalVolume,
+    this.controlsEnabled = true,
+    this.showPictureInPictureButton = true,
+    this.showFullscreenButton = true,
     this.isFullscreen = false,
     this.isPictureInPicture = false,
   }) : assert(controller == null || controllerBuilder == null),
        assert(
          initialVolume == null || initialVolume >= 0 && initialVolume <= 1,
+       ),
+       assert(
+         externalVolume == null || externalVolume >= 0 && externalVolume <= 1,
+       ),
+       assert(
+         bufferedFractionOverride == null ||
+             bufferedFractionOverride >= 0 && bufferedFractionOverride <= 1,
        ),
        assert(initialPlaybackSpeed == null || initialPlaybackSpeed > 0),
        assert(volumeStep > 0 && volumeStep <= 1);
@@ -478,6 +523,78 @@ class FVideoPlayer extends StatefulWidget {
   final FVideoScrubPreviewBuilder? scrubPreviewBuilder;
   final FVideoChromeBuilder? chromeBuilder;
 
+  /// Wraps the ready playback surface behind host overlays and chrome.
+  ///
+  /// The package composes its built-in tap and double-tap recognizer outside
+  /// the returned widget when [interactionMode] is
+  /// [FVideoInteractionMode.builtIn]. This lets a host add drag recognizers
+  /// without masking taps: a real drag wins the gesture arena, while a tap or
+  /// double tap remains package-owned. Use
+  /// [FVideoInteractionMode.delegateToChrome] when this builder needs
+  /// exclusive ownership of all surface gestures. The builder is not invoked
+  /// while [controlsEnabled] is false.
+  final FVideoSurfaceInteractionBuilder? surfaceInteractionBuilder;
+
+  /// Builds a host overlay above the playback surface and chrome.
+  ///
+  /// This builder remains active while [controlsEnabled] is false, allowing a
+  /// completion prompt or PiP-owned status surface to remain visible. An
+  /// interactive overlay deliberately blocks chrome and surface interactions
+  /// below it; wrap passive content in [IgnorePointer] to preserve them.
+  final FVideoOverlayBuilder? overlayBuilder;
+
+  /// Adds one compact action to the default chrome's bottom-trailing row.
+  ///
+  /// The returned widget receives exactly 44 by 44 logical pixels and should
+  /// expose one accurately labelled action. It is omitted when the available
+  /// row cannot fit it and ignored when [chromeBuilder] replaces the default
+  /// chrome.
+  final FVideoBottomTrailingBuilder? bottomTrailingBuilder;
+
+  /// Host-known buffered fraction used to augment backend-reported ranges.
+  ///
+  /// The timeline displays the greater of this normalized value and the
+  /// backend's last buffered endpoint, so delayed host updates never move the
+  /// buffered track backwards.
+  final double? bufferedFractionOverride;
+
+  /// Optional authority for platform or system volume.
+  ///
+  /// The delegate receives a normalized requested value and must return the
+  /// normalized value actually applied. While present, the player neither
+  /// applies initial gain to the playback controller nor mirrors
+  /// `controller.value.volume`; [FVideoChromeSnapshot.volume] is authoritative
+  /// for chrome. Superseded asynchronous results are ignored.
+  final FVideoVolumeDelegate? volumeDelegate;
+
+  /// Host-confirmed normalized volume for [volumeDelegate].
+  ///
+  /// Rebuild with the latest platform volume after an external hardware or
+  /// system change. Updating this value never calls [volumeDelegate], the
+  /// playback controller, or [onVolumeChanged].
+  final double? externalVolume;
+
+  /// Whether playback chrome and player-owned interactions are enabled.
+  ///
+  /// When false, ready default/custom chrome, surface interaction builders,
+  /// built-in gestures, keyboard shortcuts, and pointer-wheel volume are
+  /// suppressed. Playback, captions, buffering, and [overlayBuilder] remain
+  /// active; this is suitable for a native PiP capture surface.
+  final bool controlsEnabled;
+
+  /// Whether default chrome shows its Picture-in-Picture action.
+  ///
+  /// This does not disable [onPictureInPictureChanged], the keyboard shortcut,
+  /// or [FVideoActions.requestPictureInPicture], allowing a host-provided
+  /// combined mode action to remain the only visible presentation control.
+  final bool showPictureInPictureButton;
+
+  /// Whether default chrome shows its fullscreen action.
+  ///
+  /// This does not disable fullscreen callbacks, the keyboard shortcut, or
+  /// [FVideoActions.requestFullscreen].
+  final bool showFullscreenButton;
+
   /// Adds an action or inline menu to the default chrome's top-trailing edge.
   ///
   /// This is ignored when [chromeBuilder] replaces the entire ready chrome.
@@ -534,6 +651,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
   VideoPlayerValue? _lastRenderedValue;
   Duration _lastReportedPosition = Duration.zero;
   int _controllerGeneration = 0;
+  int _volumeRequestGeneration = 0;
   int _scrubGeneration = 0;
   int _scrubCommitGeneration = 0;
   Future<void> _scrubPause = Future.value();
@@ -559,8 +677,14 @@ class _FVideoPlayerState extends State<FVideoPlayer>
     _actions = _FVideoActions(this);
     _validateConfiguration();
     WidgetsBinding.instance.addObserver(this);
-    final initialAudibleVolume = widget.initialVolume ?? 1;
-    _volume = widget.initialMuted ? 0 : initialAudibleVolume;
+    final delegatedExternalVolume = widget.volumeDelegate == null
+        ? null
+        : widget.externalVolume;
+    final configuredVolume =
+        delegatedExternalVolume ?? widget.initialVolume ?? 1;
+    final initialAudibleVolume = configuredVolume > 0 ? configuredVolume : 1.0;
+    _volume =
+        delegatedExternalVolume ?? (widget.initialMuted ? 0 : configuredVolume);
     _lastAudibleVolume = initialAudibleVolume > 0 ? initialAudibleVolume : 1;
     _speed = widget.initialPlaybackSpeed ?? 1;
     unawaited(_replaceController(rebuild: false));
@@ -604,6 +728,25 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       _resumeAfterLifecycle = false;
     }
     final controller = _controller;
+    if (oldWidget.volumeDelegate != widget.volumeDelegate) {
+      _volumeRequestGeneration++;
+      if (widget.volumeDelegate != null) {
+        final externalVolume = widget.externalVolume;
+        if (externalVolume != null) _adoptVolume(externalVolume);
+      } else if (controller != null) {
+        _adoptVolume(controller.value.volume.clamp(0.0, 1.0).toDouble());
+      }
+    } else if (widget.volumeDelegate != null &&
+        oldWidget.externalVolume != widget.externalVolume &&
+        widget.externalVolume != null) {
+      _volumeRequestGeneration++;
+      _adoptVolume(widget.externalVolume!);
+    }
+    if (oldWidget.controlsEnabled != widget.controlsEnabled) {
+      _hideTimer?.cancel();
+      _controlsVisible = widget.controlsEnabled;
+      if (widget.controlsEnabled) _scheduleHide();
+    }
     if (controller != null && oldWidget.looping != widget.looping) {
       unawaited(_runCommand(() => controller.setLooping(widget.looping)));
     }
@@ -692,9 +835,17 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       );
       return;
     }
-    final initialAudibleVolume =
-        widget.initialVolume ?? controller.value.volume;
-    final targetVolume = widget.initialMuted ? 0.0 : initialAudibleVolume;
+    final delegatedExternalVolume = widget.volumeDelegate == null
+        ? null
+        : widget.externalVolume;
+    final configuredVolume =
+        delegatedExternalVolume ??
+        widget.initialVolume ??
+        controller.value.volume;
+    final initialAudibleVolume = configuredVolume > 0 ? configuredVolume : 1.0;
+    final targetVolume =
+        delegatedExternalVolume ??
+        (widget.initialMuted ? 0.0 : configuredVolume);
     final targetSpeed =
         widget.initialPlaybackSpeed ?? controller.value.playbackSpeed;
     _volume = targetVolume;
@@ -742,7 +893,8 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       await _runCommand(() => controller.setLooping(widget.looping));
       if (!_isCurrentController(controller, generation)) return;
     }
-    if (controller.value.volume != targetVolume) {
+    if (widget.volumeDelegate == null &&
+        controller.value.volume != targetVolume) {
       await _runCommand(() => controller.setVolume(targetVolume));
       if (!_isCurrentController(controller, generation)) return;
       _volume = controller.value.volume.clamp(0.0, 1.0);
@@ -800,6 +952,28 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       throw ArgumentError.value(
         initialVolume,
         'initialVolume',
+        'must be finite and between zero and one',
+      );
+    }
+    final externalVolume = widget.externalVolume;
+    if (externalVolume != null &&
+        (!externalVolume.isFinite ||
+            externalVolume < 0 ||
+            externalVolume > 1)) {
+      throw ArgumentError.value(
+        externalVolume,
+        'externalVolume',
+        'must be finite and between zero and one',
+      );
+    }
+    final bufferedFractionOverride = widget.bufferedFractionOverride;
+    if (bufferedFractionOverride != null &&
+        (!bufferedFractionOverride.isFinite ||
+            bufferedFractionOverride < 0 ||
+            bufferedFractionOverride > 1)) {
+      throw ArgumentError.value(
+        bufferedFractionOverride,
+        'bufferedFractionOverride',
         'must be finite and between zero and one',
       );
     }
@@ -939,7 +1113,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       needsImmediateRefresh = true;
     }
     final previous = _lastRenderedValue;
-    if (value.volume != _volume) {
+    if (widget.volumeDelegate == null && value.volume != _volume) {
       _volume = value.volume.clamp(0.0, 1.0);
       if (_volume > 0) _lastAudibleVolume = _volume;
       // Initialization can briefly expose the backend's default level before
@@ -1061,16 +1235,20 @@ class _FVideoPlayerState extends State<FVideoPlayer>
     try {
       await command();
     } catch (error, stackTrace) {
-      final playerError = FVideoPlayerError(
-        error.toString(),
-        cause: error,
-        stackTrace: stackTrace,
-      );
-      _invokeCallback(
-        () => widget.onError?.call(playerError),
-        'while reporting a non-fatal video command error',
-      );
+      _reportCommandError(error, stackTrace);
     }
+  }
+
+  void _reportCommandError(Object error, StackTrace stackTrace) {
+    final playerError = FVideoPlayerError(
+      error.toString(),
+      cause: error,
+      stackTrace: stackTrace,
+    );
+    _invokeCallback(
+      () => widget.onError?.call(playerError),
+      'while reporting a non-fatal video command error',
+    );
   }
 
   void _invokeCallback(VoidCallback callback, String context) {
@@ -1089,11 +1267,13 @@ class _FVideoPlayerState extends State<FVideoPlayer>
   }
 
   void _showControls() {
+    if (!widget.controlsEnabled) return;
     if (!_controlsVisible) setState(() => _controlsVisible = true);
     _scheduleHide();
   }
 
   void _hideControls() {
+    if (!widget.controlsEnabled) return;
     _hideTimer?.cancel();
     if (!_controlsVisible || _accessibleNavigation || _controlsHaveFocus) {
       return;
@@ -1102,6 +1282,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
   }
 
   void _toggleControls() {
+    if (!widget.controlsEnabled) return;
     if (_controlsVisible) {
       _hideTimer?.cancel();
       if (_accessibleNavigation) {
@@ -1115,6 +1296,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
   }
 
   void _handleControlsFocusChange(bool focused) {
+    if (!widget.controlsEnabled) return;
     if (_controlsHaveFocus == focused) return;
     _controlsHaveFocus = focused;
     if (focused) {
@@ -1136,6 +1318,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
 
   void _scheduleHide() {
     _hideTimer?.cancel();
+    if (!widget.controlsEnabled) return;
     if (_controlsMustRemainVisible) return;
     _hideTimer = Timer(widget.controlsAutoHideDuration, () {
       if (mounted && !_controlsMustRemainVisible) {
@@ -1181,18 +1364,50 @@ class _FVideoPlayerState extends State<FVideoPlayer>
 
   Future<void> _setVolume(double value) async {
     final next = value.clamp(0.0, 1.0).toDouble();
-    if (next > 0) _lastAudibleVolume = next;
-    _volume = next;
-    _invokeCallback(
-      () => widget.onVolumeChanged?.call(next),
-      'while reporting a video volume change',
-    );
+    final delegate = widget.volumeDelegate;
+    if (delegate != null) {
+      final generation = ++_volumeRequestGeneration;
+      double applied;
+      try {
+        applied = await Future<double>.value(delegate(next));
+        if (!applied.isFinite || applied < 0 || applied > 1) {
+          throw StateError(
+            'FVideoVolumeDelegate returned $applied; expected a finite '
+            'value between zero and one',
+          );
+        }
+      } catch (error, stackTrace) {
+        _reportCommandError(error, stackTrace);
+        return;
+      }
+      if (!mounted ||
+          generation != _volumeRequestGeneration ||
+          !identical(delegate, widget.volumeDelegate)) {
+        return;
+      }
+      _adoptVolume(applied, notifyHost: true);
+      setState(() {});
+      _showControls();
+      return;
+    }
+    _adoptVolume(next, notifyHost: true);
     final controller = _controller;
     if (controller != null) {
       await _runCommand(() => controller.setVolume(next));
     }
     if (mounted) setState(() {});
     _showControls();
+  }
+
+  void _adoptVolume(double volume, {bool notifyHost = false}) {
+    _volume = volume;
+    if (volume > 0) _lastAudibleVolume = volume;
+    if (notifyHost) {
+      _invokeCallback(
+        () => widget.onVolumeChanged?.call(volume),
+        'while reporting a video volume change',
+      );
+    }
   }
 
   Future<void> _toggleMute() =>
@@ -1225,7 +1440,8 @@ class _FVideoPlayerState extends State<FVideoPlayer>
   }
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    if (!widget.enableKeyboardShortcuts ||
+    if (!widget.controlsEnabled ||
+        !widget.enableKeyboardShortcuts ||
         HardwareKeyboard.instance.isAltPressed ||
         HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed) {
@@ -1610,7 +1826,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
         container: true,
         label: widget.labels.video,
         child: MouseRegion(
-          cursor: _controlsVisible
+          cursor: !widget.controlsEnabled || _controlsVisible
               ? SystemMouseCursors.basic
               : SystemMouseCursors.none,
           onEnter: (_) => _showControls(),
@@ -1618,10 +1834,11 @@ class _FVideoPlayerState extends State<FVideoPlayer>
           child: Listener(
             onPointerDown: (event) {
               _lastPointerKind = event.kind;
-              _focusNode.requestFocus();
+              if (widget.controlsEnabled) _focusNode.requestFocus();
             },
             onPointerSignal: (event) {
-              if (widget.enableScrollVolume &&
+              if (widget.controlsEnabled &&
+                  widget.enableScrollVolume &&
                   event is PointerScrollEvent &&
                   event.scrollDelta.dy != 0) {
                 GestureBinding.instance.pointerSignalResolver.register(event, (
@@ -1661,7 +1878,8 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                       !controller.value.isInitialized) {
                     return _loadingView();
                   }
-                  final readyPlayer = Stack(
+                  final scope = _chromeScope(controller);
+                  Widget interactiveSurface = Stack(
                     fit: StackFit.expand,
                     children: [
                       _videoSurface(controller),
@@ -1679,19 +1897,41 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                       if (widget.captionsEnabled &&
                           controller.value.caption.text.trim().isNotEmpty)
                         _caption(controller.value.caption.text),
-                      _chrome(controller, wide, constraints.maxHeight),
                     ],
                   );
-                  if (widget.interactionMode ==
-                      FVideoInteractionMode.delegateToChrome) {
-                    return readyPlayer;
+                  final surfaceInteractionBuilder =
+                      widget.surfaceInteractionBuilder;
+                  if (widget.controlsEnabled &&
+                      surfaceInteractionBuilder != null) {
+                    interactiveSurface = surfaceInteractionBuilder(
+                      context,
+                      scope,
+                      interactiveSurface,
+                    );
                   }
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _handleSurfaceTap,
-                    onDoubleTapDown: (details) =>
-                        _handleSurfaceDoubleTap(details, constraints.maxWidth),
-                    child: readyPlayer,
+                  if (widget.controlsEnabled &&
+                      widget.interactionMode == FVideoInteractionMode.builtIn) {
+                    interactiveSurface = GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _handleSurfaceTap,
+                      onDoubleTapDown: (details) => _handleSurfaceDoubleTap(
+                        details,
+                        constraints.maxWidth,
+                      ),
+                      child: interactiveSurface,
+                    );
+                  }
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Positioned.fill(child: interactiveSurface),
+                      if (widget.controlsEnabled)
+                        _chrome(controller, wide, constraints.maxHeight),
+                      if (widget.overlayBuilder != null)
+                        Positioned.fill(
+                          child: widget.overlayBuilder!(context, scope),
+                        ),
+                    ],
                   );
                 },
               ),
@@ -1774,10 +2014,11 @@ class _FVideoPlayerState extends State<FVideoPlayer>
           value: controller.value,
           playbackState: _stateFor(controller.value),
           displayPosition: _scrubPosition ?? controller.value.position,
-          controlsVisible: _controlsVisible,
+          controlsVisible: widget.controlsEnabled && _controlsVisible,
           isScrubbing: _scrubActive,
           bufferingIndicatorVisible: _showBuffering,
           isFullscreen: widget.isFullscreen,
+          volume: _volume,
           isPictureInPicture: widget.isPictureInPicture,
           pictureInPictureRequestPending: _pictureInPictureRequestPending,
         ),
@@ -1963,9 +2204,15 @@ class _FVideoPlayerState extends State<FVideoPlayer>
     final durationMs = hasTimeline ? value.duration.inMilliseconds : 1;
     final position = _scrubPosition ?? value.position;
     final fraction = (position.inMilliseconds / durationMs).clamp(0.0, 1.0);
-    final buffered = value.buffered.isEmpty
+    final backendBuffered = value.buffered.isEmpty
         ? 0.0
-        : (value.buffered.last.end.inMilliseconds / durationMs).clamp(0.0, 1.0);
+        : (value.buffered.last.end.inMilliseconds / durationMs)
+              .clamp(0.0, 1.0)
+              .toDouble();
+    final buffered = math.max(
+      backendBuffered,
+      widget.bufferedFractionOverride ?? 0,
+    );
     final mergeTransport =
         !wide && availableHeight - safePadding.vertical < 220;
     final horizontalPadding = mergeTransport ? 8.0 : (wide ? 24.0 : 14.0);
@@ -1983,17 +2230,19 @@ class _FVideoPlayerState extends State<FVideoPlayer>
       child: Stack(
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    chromeStyle.topScrimColor,
-                    const Color(0x00000000),
-                    chromeStyle.bottomScrimColor,
-                  ],
-                  stops: [0, 0.48, 1],
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      chromeStyle.topScrimColor,
+                      const Color(0x00000000),
+                      chromeStyle.bottomScrimColor,
+                    ],
+                    stops: [0, 0.48, 1],
+                  ),
                 ),
               ),
             ),
@@ -2084,6 +2333,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                   LayoutBuilder(
                     builder: (context, constraints) => _bottomControlsRow(
                       value: value,
+                      scope: scope,
                       position: position,
                       hasTimeline: hasTimeline,
                       wide: wide,
@@ -2129,6 +2379,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
 
   Widget _bottomControlsRow({
     required VideoPlayerValue value,
+    required FVideoChromeScope scope,
     required Duration position,
     required bool hasTimeline,
     required bool wide,
@@ -2136,9 +2387,13 @@ class _FVideoPlayerState extends State<FVideoPlayer>
     required double availableWidth,
   }) {
     final hasFullscreen =
-        widget.onToggleFullscreen != null || widget.onFullscreenChanged != null;
-    final hasPictureInPicture = widget.onPictureInPictureChanged != null;
-    var fixedWidth = 44.0;
+        widget.showFullscreenButton &&
+        (widget.onToggleFullscreen != null ||
+            widget.onFullscreenChanged != null);
+    final hasPictureInPicture =
+        widget.showPictureInPictureButton &&
+        widget.onPictureInPictureChanged != null;
+    var fixedWidth = mergeTransport ? 44.0 : 0.0;
     if (mergeTransport && widget.onPrevious != null) fixedWidth += 48;
     if (mergeTransport && widget.onNext != null) fixedWidth += 48;
 
@@ -2151,6 +2406,11 @@ class _FVideoPlayerState extends State<FVideoPlayer>
     final showVolume =
         showMute && availableWidth >= fixedWidth + 6 + volumeTrackWidth;
     if (showVolume) fixedWidth += 6 + volumeTrackWidth;
+
+    final showBottomTrailing =
+        widget.bottomTrailingBuilder != null &&
+        availableWidth >= fixedWidth + 44;
+    if (showBottomTrailing) fixedWidth += 44;
 
     final showFullscreen = hasFullscreen && availableWidth >= fixedWidth + 44;
     if (showFullscreen) fixedWidth += 44;
@@ -2173,13 +2433,14 @@ class _FVideoPlayerState extends State<FVideoPlayer>
           ),
           const SizedBox(width: 4),
         ],
-        _controlButton(
-          glyph: value.isPlaying ? _Glyph.pause : _Glyph.play,
-          label: value.isPlaying ? widget.labels.pause : widget.labels.play,
-          onTap: _togglePlayback,
-          filled: mergeTransport,
-          prominent: mergeTransport,
-        ),
+        if (mergeTransport)
+          _controlButton(
+            glyph: value.isPlaying ? _Glyph.pause : _Glyph.play,
+            label: value.isPlaying ? widget.labels.pause : widget.labels.play,
+            onTap: _togglePlayback,
+            filled: true,
+            prominent: true,
+          ),
         if (mergeTransport && widget.onNext != null) ...[
           const SizedBox(width: 4),
           _controlButton(
@@ -2190,7 +2451,7 @@ class _FVideoPlayerState extends State<FVideoPlayer>
           ),
         ],
         if (showMute) ...[
-          const SizedBox(width: 4),
+          if (mergeTransport) const SizedBox(width: 4),
           _controlButton(
             glyph: _volume == 0 ? _Glyph.muted : _Glyph.volume,
             label: _volume == 0 ? widget.labels.unmute : widget.labels.mute,
@@ -2246,6 +2507,13 @@ class _FVideoPlayerState extends State<FVideoPlayer>
               text: '${_speed.toStringAsFixed(_speed % 1 == 0 ? 0 : 2)}x',
               onTap: _cycleSpeed,
               style: widget.chromeStyle,
+            ),
+          ),
+        if (showBottomTrailing)
+          SizedBox.square(
+            dimension: 44,
+            child: FocusTraversalGroup(
+              child: widget.bottomTrailingBuilder!(context, scope),
             ),
           ),
         if (showPictureInPicture)
