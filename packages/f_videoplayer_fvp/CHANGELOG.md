@@ -1,3 +1,8 @@
+## 0.4.1
+
+- Published the standalone adapter against the matching `f_videoplayer`
+  release tag and the integrity-pinned FVP fork.
+
 ## 0.1.0
 
 - Added explicit, one-time FVP backend registration for every Flutter engine.
@@ -7,4 +12,4 @@
 - Kept FVP optional so the core player does not force native FVP binaries into
   applications that use only official `video_player` implementations.
 - Documented per-engine/process-wide initialization rules and the repository's
-  validated `0.37.3+fvideo.1` Apple Swift Package Manager override.
+  validated `0.37.3+fvideo.2` Apple Swift Package Manager override.

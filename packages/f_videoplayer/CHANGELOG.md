@@ -1,3 +1,8 @@
+## 0.4.1
+
+- Coordinated the standalone core package with the first production-tagged
+  adapter and Picture-in-Picture plugin release.
+
 ## 0.3.0
 
 - Added compact and wide continuous volume controls with 44-pixel interaction

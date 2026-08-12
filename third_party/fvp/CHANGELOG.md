@@ -1,3 +1,9 @@
+# 0.37.3+fvideo.2
+
+* pin every downloaded MDK 0.37.0 archive to its official SHA-256 and reject
+  stale or unverified extracted SDK caches
+* align native package metadata and archive names with the selected release
+
 # 0.37.3+fvideo.1
 
 * package PrivacyInfo.xcprivacy and MDK 0.37.0 correctly with Swift Package Manager

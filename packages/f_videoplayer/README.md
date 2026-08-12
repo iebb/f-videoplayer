@@ -94,7 +94,7 @@ dependency_overrides:
 ```
 
 The final application—not a transitive package—must declare that override.
-This repository validates `third_party/fvp` version `0.37.3+fvideo.1`, which
+This repository validates `third_party/fvp` version `0.37.3+fvideo.2`, which
 contains its current Apple Swift Package Manager resource/framework fixes. If
 you select a different FVP release or fork, repeat both iOS and macOS SPM
 builds; a compatible Dart constraint alone does not validate native packaging.
