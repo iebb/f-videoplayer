@@ -86,6 +86,9 @@ jobs:
       - name: Build Android example
         working-directory: ${{ env.EXAMPLE }}
         run: flutter build apk --debug
+      - name: Test Android Picture in Picture lifecycle
+        working-directory: ${{ env.EXAMPLE }}/android
+        run: ./gradlew :f_videoplayer_pip:testDebugUnitTest
 
   ios:
     runs-on: macos-latest

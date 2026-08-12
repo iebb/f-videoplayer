@@ -72,7 +72,25 @@ macro(fvp_setup_deps)
     set(FVP_DEPS_URL https://github.com/wang-bin/mdk-sdk/releases/download/v0.37.0)
   endif()
   set(MDK_SDK_URL "${FVP_DEPS_URL}/${MDK_SDK_PKG}")
-  set(MDK_SDK_SAVE "${CMAKE_CURRENT_SOURCE_DIR}/${MDK_SDK_PKG}")
+  # Flutter reaches plugins through generated symlinks. Keep downloads,
+  # extraction, and provenance checks on the canonical package directory.
+  get_filename_component(MDK_SDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" REALPATH)
+  set(MDK_SDK_SAVE "${MDK_SDK_ROOT}/${MDK_SDK_PKG}")
+  set(MDK_SDK_DIR "${MDK_SDK_ROOT}/mdk-sdk")
+  set(MDK_SDK_MARKER "${MDK_SDK_DIR}/.fvp-archive-sha256")
+
+  set(MDK_SDK_READY OFF)
+  if(EXISTS "${MDK_SDK_DIR}/lib/cmake/FindMDK.cmake" AND EXISTS "${MDK_SDK_MARKER}")
+    file(READ "${MDK_SDK_MARKER}" MDK_SDK_EXTRACTED_SHA256)
+    string(STRIP "${MDK_SDK_EXTRACTED_SHA256}" MDK_SDK_EXTRACTED_SHA256)
+    if(MDK_SDK_EXTRACTED_SHA256 STREQUAL MDK_SDK_SHA256)
+      set(MDK_SDK_READY ON)
+    endif()
+  endif()
+  if(EXISTS "${MDK_SDK_DIR}" AND NOT MDK_SDK_READY)
+    file(REMOVE_RECURSE "${MDK_SDK_DIR}")
+    message(STATUS "Removed unverified or stale extracted MDK SDK")
+  endif()
 
   if(EXISTS "${MDK_SDK_SAVE}")
     file(SHA256 "${MDK_SDK_SAVE}" MDK_SDK_ACTUAL_SHA256)
@@ -82,7 +100,7 @@ macro(fvp_setup_deps)
     endif()
   endif()
 
-  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mdk-sdk/lib/cmake/FindMDK.cmake")
+  if(NOT MDK_SDK_READY)
     if(NOT EXISTS "${MDK_SDK_SAVE}")
       message("Downloading mdk-sdk from ${MDK_SDK_URL}")
       file(
@@ -99,21 +117,18 @@ macro(fvp_setup_deps)
         message(FATAL_ERROR "Failed to download verified mdk-sdk: ${MDK_DOWNLOAD_MESSAGE}")
       endif()
     endif()
-    # Flutter reaches plugins through a generated symlink. Newer CMake secure
-    # archive extraction refuses to write through that path, so extract through
-    # its canonical directory instead.
-    get_filename_component(MDK_SDK_EXTRACT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" REALPATH)
     execute_process(
       COMMAND ${CMAKE_COMMAND} -E tar "xvf" "${MDK_SDK_SAVE}" # "--format=7zip"
-      WORKING_DIRECTORY "${MDK_SDK_EXTRACT_DIR}"
+      WORKING_DIRECTORY "${MDK_SDK_ROOT}"
       OUTPUT_STRIP_TRAILING_WHITESPACE
       RESULT_VARIABLE EXTRACT_RET
     )
     # EXTRACT_RET is 0 even for empty files
-    if(NOT EXTRACT_RET EQUAL 0 OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mdk-sdk/lib/cmake/FindMDK.cmake)
+    if(NOT EXTRACT_RET EQUAL 0 OR NOT EXISTS "${MDK_SDK_DIR}/lib/cmake/FindMDK.cmake")
       file(REMOVE "${MDK_SDK_SAVE}")
       message(FATAL_ERROR "Failed to extract mdk-sdk. You can download manually from ${MDK_SDK_URL} and extract to ${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
+    file(WRITE "${MDK_SDK_MARKER}" "${MDK_SDK_SHA256}\n")
   endif()
-  include(${CMAKE_CURRENT_SOURCE_DIR}/mdk-sdk/lib/cmake/FindMDK.cmake)
+  include("${MDK_SDK_DIR}/lib/cmake/FindMDK.cmake")
 endmacro()

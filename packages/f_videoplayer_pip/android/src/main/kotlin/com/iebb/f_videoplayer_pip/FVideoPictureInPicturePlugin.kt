@@ -31,13 +31,13 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private var preparedId: String? = null
     private val preparedArguments = mutableMapOf<String, Any?>()
     private var activityStarted = false
-    private var inPictureInPicture = false
-    private var exitPending = false
+    private val lifecycle = FVideoPictureInPictureLifecycle()
     private var receiverRegistered = false
 
     private val actionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != actionIntentName()) return
+            if (lifecycle.stopRequested) return
             val id = intent.getStringExtra(EXTRA_ID) ?: return
             if (id != preparedId) return
             val action = intent.getStringExtra(EXTRA_ACTION) ?: return
@@ -95,12 +95,12 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
             "cancel" -> {
                 val requestedId = call.argument<String>("id")
                 if (requestedId == null || requestedId == preparedId) {
-                    clearPreparedSession(resetParams = !inPictureInPicture)
+                    requestStopOrClearPreparedSession()
                 }
                 result.success(null)
             }
             "stop" -> {
-                clearPreparedSession(resetParams = !inPictureInPicture)
+                requestStopOrClearPreparedSession()
                 result.success(null)
             }
             else -> result.notImplemented()
@@ -108,8 +108,9 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     }
 
     private fun prepare(arguments: Map<*, *>?): Boolean {
-        if (!isSupported()) return false
+        if (!isSupported() || lifecycle.inPictureInPicture) return false
         val id = arguments?.get("id") as? String ?: return false
+        lifecycle.reset()
         preparedId = id
         preparedArguments.clear()
         mergeArguments(arguments)
@@ -118,6 +119,7 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     }
 
     private fun update(arguments: Map<*, *>?) {
+        if (lifecycle.stopRequested) return
         val id = arguments?.get("id") as? String ?: return
         if (id != preparedId) return
         mergeArguments(arguments)
@@ -146,7 +148,7 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private fun startPrepared(arguments: Map<*, *>?): Boolean {
         if (!isSupported()) return false
         val id = arguments?.get("id") as? String ?: return false
-        if (id != preparedId) return false
+        if (id != preparedId || lifecycle.blocksEntry) return false
         mergeArguments(arguments)
         applyPictureInPictureParams()
         return enterPictureInPictureManually()
@@ -154,7 +156,7 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
 
     private fun enterPictureInPictureManually(): Boolean {
         val currentActivity = activity ?: return false
-        if (!isSupported() || preparedId == null || inPictureInPicture) return false
+        if (!isSupported() || preparedId == null || lifecycle.blocksEntry) return false
         if (preparedArguments["playing"] != true) return false
         val params = paramsForPreparedSession() ?: return false
         return try {
@@ -198,7 +200,9 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
         builder.setActions(remoteActions())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(
-                preparedId != null && preparedArguments["playing"] == true,
+                preparedId != null &&
+                    preparedArguments["playing"] == true &&
+                    !lifecycle.stopRequested,
             )
         }
         return try {
@@ -217,7 +221,9 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
         builder.setActions(remoteActions())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(
-                preparedId != null && preparedArguments["playing"] == true,
+                preparedId != null &&
+                    preparedArguments["playing"] == true &&
+                    !lifecycle.stopRequested,
             )
         }
         return try {
@@ -256,7 +262,9 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     }
 
     private fun remoteActions(): List<RemoteAction> {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return emptyList()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || lifecycle.stopRequested) {
+            return emptyList()
+        }
         val currentActivity = activity ?: return emptyList()
         val id = preparedId ?: return emptyList()
         val playing = preparedArguments["playing"] == true
@@ -291,30 +299,36 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     }
 
     private fun notifyStarted() {
-        if (inPictureInPicture) return
         val id = preparedId ?: return
-        inPictureInPicture = true
-        exitPending = false
+        if (!lifecycle.markEntered()) return
         invoke("didStart", callbackArguments(id))
     }
 
     private fun notifyRestored() {
-        if (!inPictureInPicture) return
         val id = preparedId ?: return
-        inPictureInPicture = false
-        exitPending = false
+        if (!lifecycle.markRestored()) return
         invoke("didRestore", callbackArguments(id))
         applyPictureInPictureParams()
     }
 
     private fun notifyStopped() {
-        if (!inPictureInPicture) return
         val id = preparedId ?: return
+        if (!lifecycle.markStopped()) return
         val arguments = callbackArguments(id)
-        inPictureInPicture = false
-        exitPending = false
         clearPreparedSession(resetParams = false)
         invoke("didStop", arguments)
+    }
+
+    private fun requestStopOrClearPreparedSession() {
+        if (lifecycle.requestStop()) {
+            // Android has no public API to force an Activity out of PiP. Keep
+            // the session identity until the OS reports the actual exit so the
+            // Dart side receives one final didStop and can release callbacks.
+            preparedArguments["playing"] = false
+            applyEmptyPictureInPictureParams()
+            return
+        }
+        clearPreparedSession(resetParams = true)
     }
 
     private fun callbackArguments(id: String): Map<String, Any?> = mapOf(
@@ -330,7 +344,7 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private fun clearPreparedSession(resetParams: Boolean) {
         preparedId = null
         preparedArguments.clear()
-        exitPending = false
+        lifecycle.reset()
         if (resetParams) applyEmptyPictureInPictureParams()
     }
 
@@ -385,8 +399,12 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
 
     private fun handleActivityResumed(activity: Activity) {
         if (this.activity !== activity) return
-        if (inPictureInPicture && exitPending && !activity.isInPictureInPictureMode) {
-            notifyRestored()
+        when (lifecycle.onActivityResumed(activity.isInPictureInPictureMode)) {
+            FVideoPictureInPictureExitDisposition.RESTORE -> notifyRestored()
+            FVideoPictureInPictureExitDisposition.STOP -> notifyStopped()
+            FVideoPictureInPictureExitDisposition.NONE,
+            FVideoPictureInPictureExitDisposition.AWAIT_RESUME,
+            -> Unit
         }
     }
 
@@ -403,13 +421,13 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private fun handleActivityStopped(activity: Activity) {
         if (this.activity !== activity) return
         activityStarted = false
-        if (inPictureInPicture) notifyStopped()
+        if (lifecycle.inPictureInPicture) notifyStopped()
         unregisterActionReceiver()
     }
 
     private fun handleActivityDestroyed(activity: Activity) {
         if (this.activity !== activity) return
-        if (inPictureInPicture) notifyStopped()
+        if (lifecycle.inPictureInPicture) notifyStopped()
         unregisterActionReceiver()
     }
 
@@ -431,11 +449,13 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
         if (this.activity !== activity) return
         if (isInPictureInPictureMode) {
             notifyStarted()
-        } else if (inPictureInPicture) {
-            if (activityStarted) {
-                exitPending = true
-            } else {
-                notifyStopped()
+        } else {
+            when (lifecycle.onPictureInPictureModeExited(activityStarted)) {
+                FVideoPictureInPictureExitDisposition.STOP -> notifyStopped()
+                FVideoPictureInPictureExitDisposition.RESTORE,
+                FVideoPictureInPictureExitDisposition.NONE,
+                FVideoPictureInPictureExitDisposition.AWAIT_RESUME,
+                -> Unit
             }
         }
     }
@@ -483,5 +503,88 @@ class FVideoPictureInPicturePlugin : FlutterPlugin, MethodChannel.MethodCallHand
             isInPictureInPictureMode,
             newConfig,
         )
+    }
+}
+
+internal enum class FVideoPictureInPictureExitDisposition {
+    NONE,
+    AWAIT_RESUME,
+    RESTORE,
+    STOP,
+}
+
+/**
+ * Pure lifecycle state for the Activity-hosted Android PiP session.
+ *
+ * The native Activity can request PiP exit but cannot force the OS window to
+ * close. A stop therefore remains pending until Android reports that PiP has
+ * actually ended, keeping the media-session id available for the final Dart
+ * callback and preventing another session from entering over the active one.
+ */
+internal class FVideoPictureInPictureLifecycle {
+    var inPictureInPicture = false
+        private set
+    var stopRequested = false
+        private set
+    private var exitPending = false
+
+    val blocksEntry: Boolean
+        get() = inPictureInPicture || stopRequested
+
+    fun markEntered(): Boolean {
+        if (inPictureInPicture || stopRequested) return false
+        inPictureInPicture = true
+        exitPending = false
+        return true
+    }
+
+    fun requestStop(): Boolean {
+        if (!inPictureInPicture) return false
+        stopRequested = true
+        exitPending = false
+        return true
+    }
+
+    fun onPictureInPictureModeExited(
+        activityStarted: Boolean,
+    ): FVideoPictureInPictureExitDisposition {
+        if (!inPictureInPicture) return FVideoPictureInPictureExitDisposition.NONE
+        if (stopRequested || !activityStarted) {
+            return FVideoPictureInPictureExitDisposition.STOP
+        }
+        exitPending = true
+        return FVideoPictureInPictureExitDisposition.AWAIT_RESUME
+    }
+
+    fun onActivityResumed(
+        stillInPictureInPicture: Boolean,
+    ): FVideoPictureInPictureExitDisposition {
+        if (!inPictureInPicture || stillInPictureInPicture) {
+            return FVideoPictureInPictureExitDisposition.NONE
+        }
+        if (stopRequested) return FVideoPictureInPictureExitDisposition.STOP
+        return if (exitPending) {
+            FVideoPictureInPictureExitDisposition.RESTORE
+        } else {
+            FVideoPictureInPictureExitDisposition.NONE
+        }
+    }
+
+    fun markRestored(): Boolean {
+        if (!inPictureInPicture || stopRequested) return false
+        reset()
+        return true
+    }
+
+    fun markStopped(): Boolean {
+        if (!inPictureInPicture) return false
+        reset()
+        return true
+    }
+
+    fun reset() {
+        inPictureInPicture = false
+        stopRequested = false
+        exitPending = false
     }
 }
