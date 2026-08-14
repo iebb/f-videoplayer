@@ -1,3 +1,10 @@
+## 0.5.1
+
+- Placed the built-in tap/double-tap interaction layer above native Android
+  video surfaces while keeping host drag recognizers in the same gesture arena,
+  so tapping outside the controls hides them without breaking playback
+  gestures.
+
 ## 0.5.0
 
 - Added additive surface-interaction, host-overlay, and fixed 44-pixel

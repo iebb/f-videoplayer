@@ -1,3 +1,8 @@
+## 0.5.1
+
+- Coordinated the PiP package with the core player's cross-platform built-in
+  surface-control interaction fix.
+
 ## 0.5.0
 
 - Coordinated native PiP packaging with the core player's controlled chrome

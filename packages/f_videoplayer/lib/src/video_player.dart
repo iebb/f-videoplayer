@@ -1899,6 +1899,37 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                         _caption(controller.value.caption.text),
                     ],
                   );
+                  if (widget.controlsEnabled &&
+                      widget.interactionMode == FVideoInteractionMode.builtIn) {
+                    // Keep the built-in tap recognizer above the video
+                    // surface. Android's SurfaceProducer can consume the
+                    // pointer before a recognizer wrapped around the native
+                    // surface gets a chance to enter the arena. The overlay
+                    // still yields a drag to a host surfaceInteractionBuilder
+                    // because it only owns tap/double-tap recognizers.
+                    interactiveSurface = Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned.fill(child: interactiveSurface),
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _handleSurfaceTap,
+                            onDoubleTapDown: (details) =>
+                                _handleSurfaceDoubleTap(
+                                  details,
+                                  constraints.maxWidth,
+                                ),
+                            child: const SizedBox.expand(),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  // Keep host gesture wrappers outside the built-in tap
+                  // layer. Their pan recognizer then remains in the same
+                  // gesture arena: a tap is won by the player, while a drag
+                  // is still won by the host (seeking/volume/navigation).
                   final surfaceInteractionBuilder =
                       widget.surfaceInteractionBuilder;
                   if (widget.controlsEnabled &&
@@ -1907,18 +1938,6 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                       context,
                       scope,
                       interactiveSurface,
-                    );
-                  }
-                  if (widget.controlsEnabled &&
-                      widget.interactionMode == FVideoInteractionMode.builtIn) {
-                    interactiveSurface = GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _handleSurfaceTap,
-                      onDoubleTapDown: (details) => _handleSurfaceDoubleTap(
-                        details,
-                        constraints.maxWidth,
-                      ),
-                      child: interactiveSurface,
                     );
                   }
                   return Stack(

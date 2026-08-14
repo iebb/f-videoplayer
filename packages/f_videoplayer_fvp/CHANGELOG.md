@@ -1,3 +1,8 @@
+## 0.5.1
+
+- Coordinated the adapter with the core player's cross-platform built-in
+  surface-control interaction fix.
+
 ## 0.5.0
 
 - Coordinated the adapter dependency and source-only FVP override with the

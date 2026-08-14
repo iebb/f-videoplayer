@@ -989,6 +989,38 @@ void main() {
     await controller.dispose();
   });
 
+  testWidgets('touch surface taps toggle the shared built-in controls', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+
+    await tester.pumpWidget(
+      _frame(
+        FVideoPlayer(
+          source: _source('touch-surface-controls'),
+          controller: controller,
+          autoplay: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_controlOpacity(tester), 1);
+
+    final player = find.byType(FVideoPlayer);
+    final surfacePoint = tester.getTopLeft(player) + const Offset(40, 120);
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 0);
+
+    await tester.tapAt(surfacePoint, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await controller.dispose();
+  });
+
   testWidgets(
     'controlled picture in picture coalesces requests and updates default chrome',
     (tester) async {
