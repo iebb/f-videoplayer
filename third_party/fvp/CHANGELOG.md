@@ -1,3 +1,11 @@
+# 0.37.3+fvideo.6
+
+- Replace tagged MDK 0.38.0 binaries with the official 2026-08-14 nightly
+  (0.38.0, git 5411f17). Live macOS playback confirmed the tagged build still
+  rendered MDK's outdated-SDK QR while this nightly does not.
+- Mirror the exact official nightly archives in an immutable GitHub release
+  and verify every platform archive with SHA-256 before extraction.
+
 # 0.37.3+fvideo.5
 
 - Pin Apple, Android, Linux, Windows, and OHOS packaging to MDK 0.38.0

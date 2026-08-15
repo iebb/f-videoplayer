@@ -1,3 +1,7 @@
+## 0.5.3
+
+- Coordinated the PiP package with the QR-free 2026-08-14 MDK nightly.
+
 ## 0.5.2
 
 - Coordinated the PiP package version with the MDK 0.38.0 playback runtime

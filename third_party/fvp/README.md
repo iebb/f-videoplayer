@@ -90,12 +90,14 @@ find . -name Podfile.lock -delete
 rm -rf {mac,i}os/Pods
 ```
 
-This fork pins non-Apple native archives to MDK 0.38.0 and verifies their
-SHA-256 before extraction. `FVP_DEPS_LATEST` is intentionally disabled. An
-audited mirror or version override must provide both an HTTPS `FVP_DEPS_URL`
-and the exact selected archive hash in `FVP_DEPS_SHA256`. Update the package
-name, version, checksum table, Apple package checksum, notices, and native
-build matrix together when upgrading.
+This fork pins non-Apple native archives to the official 2026-08-14 MDK
+nightly (0.38.0, git 5411f17), mirrored at the repository's immutable
+`mdk-nightly-2026-08-14` release, and verifies their SHA-256 before extraction.
+`FVP_DEPS_LATEST` is intentionally disabled. An audited mirror or version
+override must provide both an HTTPS `FVP_DEPS_URL` and the exact selected
+archive hash in `FVP_DEPS_SHA256`. Update the package name, version, checksum
+table, Apple package checksum, notices, and native build matrix together when
+upgrading.
 
 
 # Design

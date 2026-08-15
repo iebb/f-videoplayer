@@ -1,3 +1,8 @@
+## 0.5.3
+
+- Replaced the tagged MDK runtime with the official 2026-08-14 nightly after
+  live playback proved the tag still emitted MDK's outdated-SDK QR watermark.
+
 ## 0.5.2
 
 - Coordinated the package release with the MDK 0.38.0 runtime refresh, which

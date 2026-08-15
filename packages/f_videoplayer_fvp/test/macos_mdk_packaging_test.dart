@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('native packaging pins MDK 0.38.0 with release digests', () {
+  test('native packaging pins the 2026-08-14 MDK nightly digests', () {
     final manifest = File(
       '../../third_party/fvp/darwin/fvp/Package.swift',
     ).readAsStringSync();
@@ -11,21 +11,24 @@ void main() {
       '../../third_party/fvp/cmake/deps.cmake',
     ).readAsStringSync();
 
-    expect(manifest, contains('releases/download/v0.38.0/mdk-sdk-apple.zip'));
+    expect(
+      manifest,
+      contains('releases/download/mdk-nightly-2026-08-14/mdk.xcframework.zip'),
+    );
     expect(
       manifest,
       contains(
-        'dfae61b90ae1cc543d173b3b4cf2411856c98d61a3a56d7b032573080b8d18a5',
+        '615b9e8ddd6d31a35c109b8dcb2493e896a3b532aed0b6b498d1c62686fbe3b7',
       ),
     );
-    expect(cmake, contains('releases/download/v0.38.0'));
+    expect(cmake, contains('releases/download/mdk-nightly-2026-08-14'));
     for (final digest in [
-      'bec03fac5baee70df316981c5a63fe8be0efa80911c97f14840d2deef82928ce',
-      '57d38877a72607c5d135699207320d757b8c6b60437e8fb9b984ede5265a9c06',
-      'ac9ee8a4d24bb8a3d8294ff60fada7244145b8469fc1abbff8a9d45458b4de6a',
-      '6491cefb136ca56401c27947b5ee37e6533965f1aff826f1a6880a961c554672',
-      '0ce5cc02a2adb07bd0d043d2cb88bbd97669282f848624ea3dd10d537757aff7',
-      '9ce29b1c29aa2d051e52f50af8a1578ab80f6d17955a2935514e1c69b8a23d3e',
+      'e61c38782b13198732749caaca436b7c0e13d34cf8d9050f5e5505838ab5529b',
+      'c541fa13dd12e17414eb05e6a176f3fb40a93cc5c38aaf85dbce1cd68d2828f0',
+      '580c657e635023fe588a007fb8acf06d1e11c5c28fefe3ae3302850b8be2d800',
+      'de5a8ff0a104b220601775019b350810a73c13354571100b9a649b46faf33d3d',
+      'd89195411c42d213013f3e48f2ae707dffc6b750a73a56bdf7793dade582d6ae',
+      '0e0aee20b1c12cbc2e5b362ad028e556748a39ba9785a1065bed0dea1148a882',
     ]) {
       expect(cmake, contains(digest));
     }

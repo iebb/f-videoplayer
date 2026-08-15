@@ -1,3 +1,8 @@
+## 0.5.3
+
+- Pinned the official 2026-08-14 MDK nightly by SHA-256 on every native
+  platform and verified its Apple framework in a real FVP playback build.
+
 ## 0.5.2
 
 - Validated and documented the integrity-pinned MDK 0.38.0 FVP runtime used
