@@ -56,7 +56,7 @@ flutter build macos --debug
 ```
 
 The example's `dependency_overrides` pins FVP to
-`../../../third_party/fvp` (`0.37.3+fvideo.4`). Overrides from a dependency are
+`../../../third_party/fvp` (`0.37.3+fvideo.5`). Overrides from a dependency are
 not inherited, so an application copying the optional adapter must declare its
 own tested FVP source. Do not replace this with an unverified constraint and
 still treat the SPM smoke build as equivalent.

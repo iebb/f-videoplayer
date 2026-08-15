@@ -1,3 +1,9 @@
+# 0.37.3+fvideo.5
+
+- Pin Apple, Android, Linux, Windows, and OHOS packaging to MDK 0.38.0
+  with the official release SHA-256 digests. This keeps the free Flutter key
+  current and prevents MDK's expired-SDK QR watermark from replacing frames.
+
 # 0.37.3+fvideo.4
 
 - Coordinated the source-only fork version with repository release v0.5.0;

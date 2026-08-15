@@ -3,6 +3,34 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('native packaging pins MDK 0.38.0 with release digests', () {
+    final manifest = File(
+      '../../third_party/fvp/darwin/fvp/Package.swift',
+    ).readAsStringSync();
+    final cmake = File(
+      '../../third_party/fvp/cmake/deps.cmake',
+    ).readAsStringSync();
+
+    expect(manifest, contains('releases/download/v0.38.0/mdk-sdk-apple.zip'));
+    expect(
+      manifest,
+      contains(
+        'dfae61b90ae1cc543d173b3b4cf2411856c98d61a3a56d7b032573080b8d18a5',
+      ),
+    );
+    expect(cmake, contains('releases/download/v0.38.0'));
+    for (final digest in [
+      'bec03fac5baee70df316981c5a63fe8be0efa80911c97f14840d2deef82928ce',
+      '57d38877a72607c5d135699207320d757b8c6b60437e8fb9b984ede5265a9c06',
+      'ac9ee8a4d24bb8a3d8294ff60fada7244145b8469fc1abbff8a9d45458b4de6a',
+      '6491cefb136ca56401c27947b5ee37e6533965f1aff826f1a6880a961c554672',
+      '0ce5cc02a2adb07bd0d043d2cb88bbd97669282f848624ea3dd10d537757aff7',
+      '9ce29b1c29aa2d051e52f50af8a1578ab80f6d17955a2935514e1c69b8a23d3e',
+    ]) {
+      expect(cmake, contains(digest));
+    }
+  });
+
   test('Apple SPM delegates Flutter linkage to FlutterFramework product', () {
     final manifest = File(
       '../../third_party/fvp/darwin/fvp/Package.swift',

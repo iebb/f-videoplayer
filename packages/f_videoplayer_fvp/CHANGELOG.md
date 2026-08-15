@@ -1,3 +1,8 @@
+## 0.5.2
+
+- Validated and documented the integrity-pinned MDK 0.38.0 FVP runtime used
+  by repository consumers, preventing expired-SDK QR watermark frames.
+
 ## 0.5.1
 
 - Coordinated the adapter with the core player's cross-platform built-in

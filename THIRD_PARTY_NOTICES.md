@@ -22,7 +22,7 @@ terms and is not covered by this repository's BSD license. Consult:
 
 https://github.com/wang-bin/mdk-sdk#license
 
-The build scripts pin the selected 0.37.0 release assets and verify SHA-256
+The build scripts pin the selected 0.38.0 release assets and verify SHA-256
 before extraction. Integrity verification does not replace license review.
 
 Native archives may contain FFmpeg, libass, TLS/crypto libraries, or other

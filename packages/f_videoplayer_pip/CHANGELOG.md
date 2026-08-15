@@ -1,3 +1,8 @@
+## 0.5.2
+
+- Coordinated the PiP package version with the MDK 0.38.0 playback runtime
+  refresh.
+
 ## 0.5.1
 
 - Coordinated the PiP package with the core player's cross-platform built-in

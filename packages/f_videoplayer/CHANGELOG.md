@@ -1,3 +1,8 @@
+## 0.5.2
+
+- Coordinated the package release with the MDK 0.38.0 runtime refresh, which
+  removes the expired-SDK QR watermark from FVP-backed video frames.
+
 ## 0.5.1
 
 - Placed the built-in tap/double-tap interaction layer above native Android
