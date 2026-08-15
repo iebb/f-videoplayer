@@ -1,3 +1,11 @@
+## 0.5.6
+
+- Restored dynamic Apple Swift-package linkage so App Store archives embed the
+  FVP callback bridge used by `DynamicLibrary.process()` instead of stripping
+  every `MdkCallbacks*` symbol from the final application.
+- Link the dynamic product to the platform Flutter engine while retaining the
+  generated `FlutterFramework` product for compile-time headers.
+
 ## 0.5.5
 
 - Stop injecting the historical Flutter key rejected by MDK 0.38; the pinned

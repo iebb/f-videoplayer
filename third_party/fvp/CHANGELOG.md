@@ -1,3 +1,11 @@
+# 0.37.3+fvideo.9
+
+- Restore FVP's dynamic Apple Swift-package product so signed iOS archives
+  embed the framework and retain the exported callback bridge symbols that
+  Dart resolves through `DynamicLibrary.process()`.
+- Link the dynamic framework explicitly to Flutter on iOS and FlutterMacOS on
+  macOS while using Flutter's generated package product for headers.
+
 # 0.37.3+fvideo.8
 
 - Do not inject the historical Flutter key rejected by MDK 0.38, which caused

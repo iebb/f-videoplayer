@@ -79,21 +79,21 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.5.5"
+    version: "0.5.6"
   f_videoplayer_fvp:
     dependency: "direct main"
     description:
       path: "../../f_videoplayer_fvp"
       relative: true
     source: path
-    version: "0.5.5"
+    version: "0.5.6"
   f_videoplayer_pip:
     dependency: "direct main"
     description:
       path: "../../f_videoplayer_pip"
       relative: true
     source: path
-    version: "0.5.5"
+    version: "0.5.6"
   fake_async:
     dependency: transitive
     description:
@@ -147,7 +147,7 @@ packages:
       path: "../../../third_party/fvp"
       relative: true
     source: path
-    version: "0.37.3+fvideo.8"
+    version: "0.37.3+fvideo.9"
   hooks:
     dependency: transitive
     description:

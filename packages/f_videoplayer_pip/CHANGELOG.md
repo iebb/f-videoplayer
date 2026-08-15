@@ -1,3 +1,7 @@
+## 0.5.6
+
+- Coordinated the package release with the corrected Apple FVP FFI packaging.
+
 ## 0.5.5
 
 - Coordinated the package release with the child-engine MDK initialization fix.

@@ -9,7 +9,10 @@ let package = Package(
         .macOS("10.13"),
     ],
     products: [
-        .library(name: "fvp", type: .static, targets: ["fvp"]),
+        // Dart resolves the C callback bridge with DynamicLibrary.process().
+        // Keep this product dynamic so release archives embed the framework
+        // and preserve its exported MdkCallbacks* symbols for dlsym.
+        .library(name: "fvp", type: .dynamic, targets: ["fvp"]),
     ],
     dependencies: [
         .package(name: "FlutterFramework", path: "../FlutterFramework"),
@@ -37,6 +40,8 @@ let package = Package(
                 .unsafeFlags(["-Wno-documentation"]),
             ],
             linkerSettings: [
+                .linkedFramework("Flutter", .when(platforms: [.iOS])),
+                .linkedFramework("FlutterMacOS", .when(platforms: [.macOS])),
                 .linkedFramework("UIKit", .when(platforms: [.iOS])),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("AVKit"),

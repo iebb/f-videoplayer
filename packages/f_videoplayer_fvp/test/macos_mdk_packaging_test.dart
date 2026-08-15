@@ -87,7 +87,7 @@ void main() {
     }
   });
 
-  test('Apple SPM delegates Flutter linkage to FlutterFramework product', () {
+  test('Apple SPM embeds the FFI bridge as a dynamic product', () {
     final manifest = File(
       '../../third_party/fvp/darwin/fvp/Package.swift',
     ).readAsStringSync();
@@ -106,11 +106,19 @@ void main() {
     );
     expect(
       manifest,
-      contains('.library(name: "fvp", type: .static, targets: ["fvp"])'),
+      contains('.library(name: "fvp", type: .dynamic, targets: ["fvp"])'),
     );
-    expect(manifest, isNot(contains('type: .dynamic')));
-    expect(manifest, isNot(contains('.linkedFramework("Flutter"')));
-    expect(manifest, isNot(contains('.linkedFramework("FlutterMacOS"')));
+    expect(manifest, isNot(contains('type: .static')));
+    expect(manifest, contains('DynamicLibrary.process()'));
+    expect(manifest, contains('MdkCallbacks*'));
+    expect(
+      manifest,
+      contains('.linkedFramework("Flutter", .when(platforms: [.iOS]))'),
+    );
+    expect(
+      manifest,
+      contains('.linkedFramework("FlutterMacOS", .when(platforms: [.macOS]))'),
+    );
 
     // Native Apple SDK frameworks remain explicit because the generated
     // FlutterFramework product supplies only Flutter's engine framework.

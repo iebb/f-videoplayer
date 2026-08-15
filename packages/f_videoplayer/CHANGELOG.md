@@ -1,3 +1,8 @@
+## 0.5.6
+
+- Restored the dynamic Apple FVP framework required to keep Dart FFI callback
+  bridge symbols available in signed iOS release archives.
+
 ## 0.5.5
 
 - Coordinated child-engine playback with the FVP adapter's current MDK license
