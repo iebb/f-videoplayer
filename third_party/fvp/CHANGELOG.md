@@ -1,3 +1,10 @@
+# 0.37.3+fvideo.8
+
+- Do not inject the historical Flutter key rejected by MDK 0.38, which caused
+  the SDK's outdated-runtime QR frame. The freshness-pinned SDK runs key-free;
+  applications can still supply a current key explicitly, and explicit keys are
+  asserted before each native player is constructed across Flutter engines.
+
 # 0.37.3+fvideo.7
 
 - Install MDK's bundled Flutter key synchronously for explicit `registerWith`

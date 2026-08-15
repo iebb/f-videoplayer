@@ -16,18 +16,43 @@ void main() {
       contains('deferSetupUntilMain: true'),
       reason: 'Only the automatic pre-main registrant should defer setup.',
     );
-    expect(
-      backend,
-      contains('if (deferSetupUntilMain)'),
-    );
-    expect(
-      backend,
-      contains('Future<void>.delayed(Duration.zero, _setupMdk)'),
-    );
+    expect(backend, contains('if (deferSetupUntilMain)'));
+    expect(backend, contains('Future<void>.delayed(Duration.zero, _setupMdk)'));
     expect(
       backend,
       contains('} else {\n      _setupMdk();\n    }'),
       reason: 'Manual registerWith must install the key before returning.',
+    );
+  });
+
+  test('every native player reasserts an explicit process-wide MDK key', () {
+    final backend = File(
+      '../../third_party/fvp/lib/src/video_player_mdk.dart',
+    ).readAsStringSync();
+    final createStart = backend.indexOf(
+      'Future<int?> create(DataSource dataSource) async',
+    );
+    final keyInstall = backend.indexOf('_installMdkKey();', createStart);
+    final playerCreate = backend.indexOf(
+      'final player = MdkVideoPlayer();',
+      createStart,
+    );
+
+    expect(createStart, greaterThanOrEqualTo(0));
+    expect(keyInstall, greaterThan(createStart));
+    expect(
+      keyInstall,
+      lessThan(playerCreate),
+      reason: 'The key must be installed before MDK constructs a player.',
+    );
+    expect(
+      backend,
+      isNot(contains('_kDefaultMdkKey')),
+      reason: 'The stale historical key makes MDK 0.38 render a QR frame.',
+    );
+    expect(
+      backend,
+      contains("if (mdkKey is! String || mdkKey.isEmpty) return"),
     );
   });
 

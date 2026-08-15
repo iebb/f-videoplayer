@@ -20,14 +20,6 @@ import '../mdk.dart' as mdk;
 
 final _log = Logger('fvp');
 
-// Default MDK_KEY bundled with this plugin. Users can override it by passing
-// {'global': {'MDK_KEY': '<key>'}} to registerWith().
-const _kDefaultMdkKey =
-    '4DF316BC71206BCEECD01559CC0FEDAF32DF8ECAE656BD9999CB821B67DB5B33'
-    '2B323F24539BA7172746B8F5A64CA67AF342B16BF4B418F76718B821F77BEA07'
-    '22F71DBC8EDF9431132FEAA633F0125072DF8DAC90268C62D0E4BA7D6DF9A6C4'
-    '976AB1146EC55FFD1945CAB4125B20D5C77976CF1BCB77B14C563868EA00EA07';
-
 class MdkVideoPlayer extends mdk.Player {
   final streamCtl = StreamController<VideoEvent>();
   bool _initialized = false;
@@ -292,7 +284,16 @@ class MdkVideoPlayerPlatform extends VideoPlayerPlatform {
       if (key == 'MDK_KEY') return; // handled separately below
       mdk.setGlobalOption(key, value);
     });
-    final mdkKey = _globalOpts?['MDK_KEY'] as String? ?? _kDefaultMdkKey;
+    _installMdkKey();
+  }
+
+  static void _installMdkKey() {
+    // The freshness-pinned MDK SDK is usable without a key. Do not inject the
+    // historical Flutter key: MDK 0.38 rejects it and deliberately overlays an
+    // outdated-SDK QR frame. Applications with a current commercial key can
+    // still provide it explicitly through the global options map.
+    final mdkKey = _globalOpts?['MDK_KEY'];
+    if (mdkKey is! String || mdkKey.isEmpty) return;
     final k = mdkKey.toNativeUtf8();
     Libfvp.setKey(k.cast());
     malloc.free(k);
@@ -309,6 +310,10 @@ class MdkVideoPlayerPlatform extends VideoPlayerPlatform {
   @override
   Future<int?> create(DataSource dataSource) async {
     final uri = _toUri(dataSource);
+    // MDK state is process-wide while each desktop window owns a separate Dart
+    // isolate. Reassert an explicitly supplied key at the last synchronous
+    // boundary before constructing every native player.
+    _installMdkKey();
     final player = MdkVideoPlayer();
     _log.fine('$hashCode player${player.nativeHandle} create($uri)');
 

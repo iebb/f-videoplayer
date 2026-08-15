@@ -1,3 +1,8 @@
+## 0.5.5
+
+- Coordinated child-engine playback with the FVP adapter's current MDK license
+  handling so detached windows cannot fall back to a QR frame.
+
 ## 0.5.4
 
 - Coordinated the player release with synchronous MDK key installation for

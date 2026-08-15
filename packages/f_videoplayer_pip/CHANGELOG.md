@@ -1,3 +1,7 @@
+## 0.5.5
+
+- Coordinated the package release with the child-engine MDK initialization fix.
+
 ## 0.5.4
 
 - Coordinated the PiP package with the child-engine MDK initialization fix.

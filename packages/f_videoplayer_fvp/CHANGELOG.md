@@ -1,3 +1,9 @@
+## 0.5.5
+
+- Stop injecting the historical Flutter key rejected by MDK 0.38; the pinned
+  fresh SDK runs key-free, while explicitly supplied current keys remain
+  supported and are asserted before every native player is constructed.
+
 ## 0.5.4
 
 - Made explicit FVP initialization install the bundled Flutter MDK key before
