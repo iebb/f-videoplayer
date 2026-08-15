@@ -31,7 +31,7 @@ dependency_overrides:
 
 Dependency overrides are not inherited from this adapter, so the final
 application must declare the override. This repository's iOS/macOS SPM builds
-use `third_party/fvp` version `0.37.3+fvideo.6`, including its current privacy
+use `third_party/fvp` version `0.37.3+fvideo.7`, including its current privacy
 resource, binary-target, and Apple framework-link fixes. A different upstream
 version or fork may be valid, but it is a different native artifact and must be
 verified with both iOS and macOS SPM builds.

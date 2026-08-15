@@ -3,6 +3,34 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('explicit registration installs MDK setup synchronously', () {
+    final entrypoint = File(
+      '../../third_party/fvp/lib/fvp.dart',
+    ).readAsStringSync();
+    final backend = File(
+      '../../third_party/fvp/lib/src/video_player_mdk.dart',
+    ).readAsStringSync();
+
+    expect(
+      entrypoint,
+      contains('deferSetupUntilMain: true'),
+      reason: 'Only the automatic pre-main registrant should defer setup.',
+    );
+    expect(
+      backend,
+      contains('if (deferSetupUntilMain)'),
+    );
+    expect(
+      backend,
+      contains('Future<void>.delayed(Duration.zero, _setupMdk)'),
+    );
+    expect(
+      backend,
+      contains('} else {\n      _setupMdk();\n    }'),
+      reason: 'Manual registerWith must install the key before returning.',
+    );
+  });
+
   test('native packaging pins the 2026-08-14 MDK nightly digests', () {
     final manifest = File(
       '../../third_party/fvp/darwin/fvp/Package.swift',

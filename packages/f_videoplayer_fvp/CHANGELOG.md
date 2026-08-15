@@ -1,3 +1,10 @@
+## 0.5.4
+
+- Made explicit FVP initialization install the bundled Flutter MDK key before
+  returning, preventing a child engine from constructing an unkeyed player.
+- Kept Dart tooling's automatic pre-main registration deferred so native log
+  callbacks cannot enter Dart before the engine is ready.
+
 ## 0.5.3
 
 - Pinned the official 2026-08-14 MDK nightly by SHA-256 on every native
@@ -6,7 +13,7 @@
 ## 0.5.2
 
 - Validated and documented the integrity-pinned MDK 0.38.0 FVP runtime used
-  by repository consumers, preventing expired-SDK QR watermark frames.
+  by repository consumers.
 
 ## 0.5.1
 

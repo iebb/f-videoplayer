@@ -1,6 +1,10 @@
+## 0.5.4
+
+- Coordinated the PiP package with the child-engine MDK initialization fix.
+
 ## 0.5.3
 
-- Coordinated the PiP package with the QR-free 2026-08-14 MDK nightly.
+- Coordinated the PiP package with the 2026-08-14 MDK nightly.
 
 ## 0.5.2
 

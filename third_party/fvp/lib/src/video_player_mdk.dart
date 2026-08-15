@@ -159,7 +159,10 @@ class MdkVideoPlayerPlatform extends VideoPlayerPlatform {
   "video.decoders": a list of decoder names. supported decoders: https://github.com/wang-bin/mdk-sdk/wiki/Decoders
   "maxWidth", "maxHeight": texture max size. if not set, video frame size is used. a small value can reduce memory cost, but may result in lower image quality.
  */
-  static void registerVideoPlayerPlatformsWith({dynamic options}) {
+  static void registerVideoPlayerPlatformsWith({
+    dynamic options,
+    bool deferSetupUntilMain = false,
+  }) {
     _log.fine('registerVideoPlayerPlatformsWith: $options');
     if (options is Map<String, dynamic>) {
       final platforms = options['platforms'];
@@ -221,11 +224,15 @@ class MdkVideoPlayerPlatform extends VideoPlayerPlatform {
       _decoders = vd[Platform.operatingSystem];
     }
 
-    // delay: ensure log handler is set in main(), blank window if run with debugger.
-    // registerWith() can be invoked by dart_plugin_registrant.dart before main. when debugging, won't enter main if posting message from native to dart(new native log message) before main?
-    Future.delayed(const Duration(milliseconds: 0), () {
+    // Dart tooling can invoke VideoPlayerRegistrant before main. Defer only
+    // that path so a native log callback cannot post to Dart before startup.
+    // Explicit registerWith() calls happen inside main and must install the
+    // process-wide key synchronously, before the first player is constructed.
+    if (deferSetupUntilMain) {
+      Future<void>.delayed(Duration.zero, _setupMdk);
+    } else {
       _setupMdk();
-    });
+    }
 
     _prevImpl ??= VideoPlayerPlatform.instance;
     VideoPlayerPlatform.instance = MdkVideoPlayerPlatform();

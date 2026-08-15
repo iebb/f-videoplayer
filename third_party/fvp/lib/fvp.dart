@@ -54,7 +54,9 @@ void registerWith({dynamic options}) {
 /// Registers this plugin automatically by dart tooling. requires `dartPluginClass: VideoPlayerRegistrant` in pubspec.yaml
 class VideoPlayerRegistrant {
   static void registerWith() {
-    MdkVideoPlayerPlatform.registerVideoPlayerPlatformsWith();
+    MdkVideoPlayerPlatform.registerVideoPlayerPlatformsWith(
+      deferSetupUntilMain: true,
+    );
   }
 }
 
