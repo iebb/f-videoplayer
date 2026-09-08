@@ -1912,15 +1912,9 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                       children: [
                         Positioned.fill(child: interactiveSurface),
                         Positioned.fill(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _handleSurfaceTap,
-                            onDoubleTapDown: (details) =>
-                                _handleSurfaceDoubleTap(
-                                  details,
-                                  constraints.maxWidth,
-                                ),
-                            child: const SizedBox.expand(),
+                          child: _surfaceTapDetector(
+                            const SizedBox.expand(),
+                            constraints.maxWidth,
                           ),
                         ),
                       ],
@@ -1939,6 +1933,17 @@ class _FVideoPlayerState extends State<FVideoPlayer>
                       scope,
                       interactiveSurface,
                     );
+                    if (widget.interactionMode ==
+                        FVideoInteractionMode.builtIn) {
+                      // A host can inset the video into a larger background.
+                      // Keep that surrounding space tappable too. The inner
+                      // overlay still protects taps over native surfaces, and
+                      // host pan recognizers still win drags in either area.
+                      interactiveSurface = _surfaceTapDetector(
+                        interactiveSurface,
+                        constraints.maxWidth,
+                      );
+                    }
                   }
                   return Stack(
                     fit: StackFit.expand,
@@ -1958,6 +1963,22 @@ class _FVideoPlayerState extends State<FVideoPlayer>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _surfaceTapDetector(Widget child, double width) {
+    TapDownDetails? doubleTapDetails;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _handleSurfaceTap,
+      onDoubleTapDown: (details) => doubleTapDetails = details,
+      // Wait until this recognizer wins. Both the inset-video and outer
+      // background recognizers can receive down events for the same tap.
+      onDoubleTap: () {
+        final details = doubleTapDetails;
+        if (details != null) _handleSurfaceDoubleTap(details, width);
+      },
+      child: child,
     );
   }
 

@@ -2207,6 +2207,49 @@ void main() {
     await controller.dispose();
   });
 
+  testWidgets('host letterbox space toggles controls and still accepts drags', (
+    tester,
+  ) async {
+    final controller = _FakeVideoPlayerController();
+    var drags = 0;
+    await tester.pumpWidget(
+      _frame(
+        FVideoPlayer(
+          source: _source('host-letterbox'),
+          controller: controller,
+          autoplay: false,
+          surfaceInteractionBuilder: (context, scope, child) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanUpdate: (_) => drags++,
+            child: ColoredBox(
+              color: const Color(0xFF000000),
+              child: Center(
+                child: SizedBox(width: 300, height: 140, child: child),
+              ),
+            ),
+          ),
+        ),
+        width: 500,
+        height: 300,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final blank =
+        tester.getTopLeft(find.byType(FVideoPlayer)) + const Offset(35, 100);
+    await tester.tapAt(blank, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 0);
+    await tester.tapAt(blank, kind: PointerDeviceKind.touch);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(_controlOpacity(tester), 1);
+    await tester.dragFrom(blank, const Offset(50, 0));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(drags, greaterThan(0));
+    expect(_controlOpacity(tester), 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await controller.dispose();
+  });
+
   testWidgets('surface interaction keeps built-in gestures behind controls', (
     tester,
   ) async {
