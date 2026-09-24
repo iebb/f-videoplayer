@@ -1,3 +1,7 @@
+## 0.5.8
+
+- Preserve Command, Control, Option, and Shift shortcuts in player buttons and sliders.
+
 ## 0.5.6
 
 - Restored the dynamic Apple FVP framework required to keep Dart FFI callback

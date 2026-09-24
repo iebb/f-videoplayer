@@ -1,3 +1,7 @@
+## 0.5.8
+
+- Coordinate the package with the player keyboard shortcut fixes.
+
 ## 0.5.6
 
 - Restored dynamic Apple Swift-package linkage so App Store archives embed the

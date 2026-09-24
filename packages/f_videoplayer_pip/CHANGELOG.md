@@ -1,3 +1,7 @@
+## 0.5.8
+
+- Coordinate the package with the player keyboard shortcut fixes.
+
 ## 0.5.6
 
 - Coordinated the package release with the corrected Apple FVP FFI packaging.
