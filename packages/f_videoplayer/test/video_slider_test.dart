@@ -4,6 +4,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:f_videoplayer/f_videoplayer.dart';
 
 void main() {
+  testWidgets('modified navigation keys leave the slider unchanged', (
+    tester,
+  ) async {
+    final changes = <double>[];
+    final lifecycle = <String>[];
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await _pumpSlider(
+      tester,
+      value: 0.5,
+      focusNode: focus,
+      onChanged: changes.add,
+      onChangeStart: (_) => lifecycle.add('start'),
+      onChangeEnd: (_) => lifecycle.add('end'),
+    );
+    focus.requestFocus();
+    await tester.pump();
+    for (final modifier in [
+      LogicalKeyboardKey.metaLeft,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.altLeft,
+      LogicalKeyboardKey.shiftLeft,
+    ]) {
+      await tester.sendKeyDownEvent(modifier);
+      for (final key in [
+        LogicalKeyboardKey.arrowRight,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.home,
+        LogicalKeyboardKey.end,
+      ]) {
+        expect(await tester.sendKeyEvent(key), isFalse);
+      }
+      await tester.sendKeyUpEvent(modifier);
+    }
+    expect(changes, isEmpty);
+    expect(lifecycle, isEmpty);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    expect(changes, [0.55]);
+    expect(lifecycle, ['start', 'end']);
+  });
+
   testWidgets('timeline maps taps across its usable width', (tester) async {
     double? changed;
     await _pumpSlider(tester, onChanged: (value) => changed = value);

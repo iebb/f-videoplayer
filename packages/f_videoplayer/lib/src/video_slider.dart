@@ -162,8 +162,16 @@ class _FVideoSliderState extends State<FVideoSlider> {
         key == LogicalKeyboardKey.end;
     if (!supportedKey) return KeyEventResult.ignored;
     if (event is KeyUpEvent) {
+      if (!_keyboardInteractionActive) return KeyEventResult.ignored;
       _finishKeyboardInteraction();
       return KeyEventResult.handled;
+    }
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isShiftPressed) {
+      return KeyEventResult.ignored;
     }
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;

@@ -1444,7 +1444,8 @@ class _FVideoPlayerState extends State<FVideoPlayer>
         !widget.enableKeyboardShortcuts ||
         HardwareKeyboard.instance.isAltPressed ||
         HardwareKeyboard.instance.isControlPressed ||
-        HardwareKeyboard.instance.isMetaPressed) {
+        HardwareKeyboard.instance.isMetaPressed ||
+        HardwareKeyboard.instance.isShiftPressed) {
       return KeyEventResult.ignored;
     }
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
@@ -3178,6 +3179,13 @@ class _FocusableTapRegionState extends State<_FocusableTapRegion> {
   bool _hovered = false;
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed ||
+        keyboard.isMetaPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isShiftPressed) {
+      return KeyEventResult.ignored;
+    }
     final onTap = widget.onTap;
     if (onTap == null) return KeyEventResult.ignored;
     if (event is KeyDownEvent &&

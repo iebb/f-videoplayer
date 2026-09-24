@@ -1361,6 +1361,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(_semanticsWidget('Exit fullscreen'), findsOneWidget);
 
+    for (final modifier in [
+      LogicalKeyboardKey.metaLeft,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.altLeft,
+      LogicalKeyboardKey.shiftLeft,
+    ]) {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyUpEvent(modifier);
+    }
+    expect(controller.value.isPlaying, isFalse);
+    expect(controller.value.position, Duration.zero);
+    expect(fullscreenRequests, isEmpty);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
     expect(controller.value.isPlaying, isTrue);
