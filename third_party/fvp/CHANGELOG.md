@@ -1,3 +1,18 @@
+# 0.37.3+fvideo.10
+
+- Match the web registration stub to the native deferred-setup signature so
+  applications importing FVP still compile for the web.
+- Prepare the SDK before example Apple CI builds, require expected digests in
+  every download mode, and cover the real resolver/install/check paths with
+  offline tests on Linux and macOS. Verify simulator and macOS stamps, matching
+  versions and installed file hashes as well as the iOS device slice.
+- Declare the Apple `mdk.xcframework` as a local binary target resolved per
+  build by `darwin/fvp/tool/mdk_apple_freshness.py`, because libmdk's key-free
+  playback expires 44 days after the library's own build stamp. The tool
+  verifies the archive digest, reads the stamp from the ARM64 iOS slice and
+  refuses an SDK outside the window or below the API this package compiles
+  against; a stale pinned archive can no longer be linked silently.
+
 # 0.37.3+fvideo.9
 
 - Restore FVP's dynamic Apple Swift-package product so signed iOS archives
