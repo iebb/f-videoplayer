@@ -18,8 +18,12 @@ Future<Uint8List?> generateThumbnail({
     return Future<Uint8List?>.value();
   }
 
+  // fc_native_video_thumbnail has no Linux implementation in this build; a
+  // backend adapter can supply one through FVideoThumbnail.platformProvider.
+  if (Platform.isLinux) return null;
+
   final network = source.kind == FVideoSourceKind.network;
-  if (network && (Platform.isLinux || Platform.isWindows)) return null;
+  if (network && Platform.isWindows) return null;
   if (Platform.isWindows && position > Duration.zero) return null;
 
   var location = source.location;

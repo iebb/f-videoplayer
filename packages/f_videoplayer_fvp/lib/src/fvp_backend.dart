@@ -127,6 +127,9 @@ abstract final class FVideoFvpBackend {
       backend.isAvailableOnCurrentPlatform;
 
   /// Registers FVP once using [configuration].
+  ///
+  /// On Linux this also installs [FVideoThumbnail.platformProvider] backed by
+  /// the FFmpeg runtime MDK ships, unless the application set one first.
   static void ensureInitialized({
     FVideoFvpConfiguration configuration = const FVideoFvpConfiguration(),
   }) {

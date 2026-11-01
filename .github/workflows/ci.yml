@@ -56,6 +56,14 @@ jobs:
           test -f LICENSE
           test -f THIRD_PARTY_NOTICES.md
           test -f third_party/fvp/LICENSE
+          test -f third_party/fc_native_video_thumbnail/LICENSE
+          # The vendored thumbnail plugin exists to keep FFmpeg 6 out of Linux
+          # bundles, so it must not regain a Linux platform.
+          if grep -Eq '^[[:space:]]+linux:' third_party/fc_native_video_thumbnail/pubspec.yaml \
+            || [ -e third_party/fc_native_video_thumbnail/linux ]; then
+            echo 'fc_native_video_thumbnail must not declare a Linux plugin' >&2
+            exit 1
+          fi
           if find . -type f \( -name '*.so' -o -name '*.dll' -o -name '*.dylib' -o -name '*.a' \) -print -quit | grep -q .; then
             echo 'Native runtime binary committed to source repository' >&2
             exit 1
@@ -169,7 +177,6 @@ jobs:
         run: >-
           sudo apt-get update && sudo apt-get install -y
           clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
-          libavformat-dev libavcodec-dev libavutil-dev libswscale-dev libjpeg-dev
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

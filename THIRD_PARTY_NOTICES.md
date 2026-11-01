@@ -15,6 +15,21 @@ Local changes include Apple Swift Package Manager packaging, active-player iOS
 Picture in Picture, player-volume preservation, Android startup hardening, and
 native dependency version alignment.
 
+## fc_native_video_thumbnail
+
+`third_party/fc_native_video_thumbnail` is a copy of Mgenware's
+`fc_native_video_thumbnail` 3.0.1 without its Linux plugin, example, and build
+caches. It is BSD-3-Clause; the upstream license is preserved verbatim at
+`third_party/fc_native_video_thumbnail/LICENSE`.
+
+Upstream: https://github.com/mgenware/fc_native_video_thumbnail
+
+The only change is dropping the Linux platform. That plugin linked the build
+host's `libavformat`, `libavcodec`, and `libswscale` (FFmpeg 6), which made
+Linux bundles larger and unable to start on distributions without them.
+`f_videoplayer_fvp` decodes Linux thumbnails with the FFmpeg runtime MDK
+already bundles. Hosts opt in with a `dependency_overrides` entry for this path.
+
 ## libmdk and downloaded native runtimes
 
 FVP downloads libmdk archives at build time. libmdk has separate upstream
