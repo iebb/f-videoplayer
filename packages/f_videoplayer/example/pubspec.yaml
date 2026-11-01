@@ -33,6 +33,10 @@ dependency_overrides:
   # app. Consumers of the optional adapter continue to resolve hosted FVP.
   fvp:
     path: ../../../third_party/fvp
+  # Upstream's Linux plugin links the build host's FFmpeg 6 libraries, which
+  # the FVP adapter replaces with MDK's bundled FFmpeg. This copy drops it.
+  fc_native_video_thumbnail:
+    path: ../../../third_party/fc_native_video_thumbnail
 
 flutter:
   config:

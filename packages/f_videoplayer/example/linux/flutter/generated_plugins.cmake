@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  fc_native_video_thumbnail
   fvp
   multi_window_manager
 )

@@ -28,6 +28,13 @@ typedef FVideoThumbnailProvider =
 
 /// Thumbnail generation used by both [FVideoPlayer] and host apps.
 abstract final class FVideoThumbnail {
+  /// Replaces the built-in platform thumbnailer used by [generateRequest].
+  ///
+  /// Playback backend adapters install a decoder here for platforms without a
+  /// suitable native thumbnailer. A widget-level thumbnail provider still takes
+  /// precedence because it never reaches [generateRequest].
+  static FVideoThumbnailProvider? platformProvider;
+
   static Future<Uint8List?> generate({
     required String source,
     required Duration position,
@@ -71,6 +78,8 @@ abstract final class FVideoThumbnail {
         'must be between zero and 100',
       );
     }
+    final provider = platformProvider;
+    if (provider != null) return provider(request);
     return backend.generateThumbnail(
       source: request.source,
       position: request.position,

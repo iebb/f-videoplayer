@@ -37,7 +37,11 @@ through immutable state plus safe player actions.
 - Drag, double-tap, pointer, wheel, keyboard, focus, RTL, and screen-reader
   interaction.
 - Provider-driven scrub thumbnails with time-only degradation when a backend
-  cannot decode preview frames.
+  cannot decode preview frames. On Linux the FVP adapter decodes local files
+  with the FFmpeg that MDK bundles, so no system FFmpeg is required; add the
+  `fc_native_video_thumbnail` override from `third_party` (see
+  `THIRD_PARTY_NOTICES.md`) to also keep the upstream plugin's FFmpeg 6 link
+  out of the build.
 - Host-controlled fullscreen so applications can choose routes, orientation,
   system UI, or in-place layouts without fighting the player.
 - System PiP on Android 8+, iOS, and macOS where the OS reports it available.

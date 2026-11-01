@@ -41,6 +41,36 @@ void main() {
     expect(received?.arguments['srcFileUri'], isFalse);
   });
 
+  test('platform provider serves valid requests only', () async {
+    final requests = <FVideoThumbnailRequest>[];
+    FVideoThumbnail.platformProvider = (request) async {
+      requests.add(request);
+      return Uint8List.fromList(const [9]);
+    };
+    addTearDown(() => FVideoThumbnail.platformProvider = null);
+
+    final bytes = await FVideoThumbnail.generate(
+      source: '/media/clip.mp4',
+      position: const Duration(seconds: 3),
+      maxWidth: 120,
+    );
+
+    expect(bytes, Uint8List.fromList(const [9]));
+    expect(requests.single.source.location, '/media/clip.mp4');
+    expect(requests.single.position, const Duration(seconds: 3));
+    expect(requests.single.maxWidth, 120);
+    expect(
+      () => FVideoThumbnail.generateRequest(
+        const FVideoThumbnailRequest(
+          source: FVideoSource.file('/media/clip.mp4'),
+          position: Duration(seconds: -1),
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(requests, hasLength(1));
+  });
+
   test('thumbnail request rejects invalid release-mode parameters', () {
     expect(
       () => FVideoThumbnail.generateRequest(

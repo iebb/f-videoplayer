@@ -5,3 +5,5 @@ void register(Map<String, Object> options) {
 }
 
 void registerAndroidAlphaWebmDecoder() {}
+
+void installLinuxThumbnailer() {}
