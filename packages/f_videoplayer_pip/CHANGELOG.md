@@ -1,3 +1,8 @@
+## 0.5.10
+
+- feat(linux): decode scrub thumbnails via MDK's bundled FFmpeg.
+- chore(linux): vendor fc_native_video_thumbnail without Linux FFmpeg 6 link.
+
 ## 0.5.9
 
 - Coordinate the package with the Apple MDK build-time freshness fix.
