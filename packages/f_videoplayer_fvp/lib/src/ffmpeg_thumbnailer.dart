@@ -9,8 +9,8 @@ import 'package:ffi/ffi.dart';
 ///
 /// Only stable public FFmpeg entry points are called. The single structure
 /// read directly is the leading `data`/`linesize` arrays of `AVFrame`, whose
-/// layout has not changed since FFmpeg's first public releases, so an MDK
-/// update to a newer FFmpeg does not need a matching rebuild here.
+/// layout is shared by the pinned MDK runtimes. Test decoding against the
+/// bundled runtime whenever that dependency changes.
 final class FfmpegThumbnailer {
   FfmpegThumbnailer(this.libraryPath);
 
@@ -63,6 +63,9 @@ Uint8List? decodeFrame(
 }) {
   if (maxWidth <= 0) {
     throw ArgumentError.value(maxWidth, 'maxWidth', 'must be positive');
+  }
+  if (position.isNegative) {
+    throw ArgumentError.value(position, 'position', 'must not be negative');
   }
   final ffmpeg = _Ffmpeg(DynamicLibrary.open(libraryPath));
   return using((arena) {
@@ -126,8 +129,7 @@ Uint8List? decodeFrame(
       final frame = frameSlot.value = ffmpeg.frameAlloc();
       if (frame == nullptr) return null;
       final sink = chain.last;
-      // A negative status is the end of the stream before any frame, such as
-      // a position past the duration; that has no thumbnail.
+      // A decoder error or end of stream before any frame has no thumbnail.
       if (ffmpeg.sinkGetFrame(sink, frame) < 0) return null;
       final width = ffmpeg.sinkWidth(sink);
       final height = ffmpeg.sinkHeight(sink);
