@@ -1,6 +1,6 @@
 name: f_videoplayer_fvp
 description: Optional FVP playback backend adapter for f_videoplayer.
-version: 0.5.10
+version: 0.5.11
 publish_to: none
 homepage: https://github.com/iebb/f-videoplayer
 repository: https://github.com/iebb/f-videoplayer
@@ -22,7 +22,7 @@ dependencies:
   f_videoplayer:
     git:
       url: https://github.com/iebb/f-videoplayer.git
-      ref: v0.5.10
+      ref: v0.5.11
       path: packages/f_videoplayer
   video_player_platform_interface: any
 

@@ -1,3 +1,7 @@
+## 0.5.11
+
+- fix(ohos): read the vendored FVP plugin's `resourceManager` as a property so the HarmonyOS build compiles.
+
 ## 0.5.10
 
 - feat(linux): decode scrub thumbnails via MDK's bundled FFmpeg.
