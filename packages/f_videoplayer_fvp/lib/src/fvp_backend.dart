@@ -3,7 +3,10 @@ import 'fvp_backend_stub.dart'
     as backend;
 
 /// Native platforms that can be routed through FVP.
-enum FVideoFvpPlatform { android, ios, linux, macos, windows }
+///
+/// Each name matches `Platform.operatingSystem`; [ohos] is HarmonyOS, which
+/// the official `video_player` package does not implement.
+enum FVideoFvpPlatform { android, ios, linux, macos, windows, ohos }
 
 /// FVP's network playback latency policy.
 enum FVideoFvpLowLatency {

@@ -12,7 +12,8 @@ bool get isAvailableOnCurrentPlatform =>
     Platform.isIOS ||
     Platform.isLinux ||
     Platform.isMacOS ||
-    Platform.isWindows;
+    Platform.isWindows ||
+    Platform.operatingSystem == 'ohos';
 
 void register(Map<String, Object> options) {
   fvp.registerWith(options: options);

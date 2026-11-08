@@ -1,3 +1,8 @@
+## 0.5.11
+
+- fix(ohos): read the vendored FVP plugin's `resourceManager` as a property so the HarmonyOS build compiles.
+- feat(ohos): add `FVideoFvpPlatform.ohos` so FVP can serve `video_player` on HarmonyOS, which has no official backend.
+
 ## 0.5.10
 
 - feat(linux): decode scrub thumbnails via MDK's bundled FFmpeg.
