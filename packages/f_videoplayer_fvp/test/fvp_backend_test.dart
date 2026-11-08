@@ -10,6 +10,16 @@ void main() {
     });
   });
 
+  test('HarmonyOS maps to its Platform.operatingSystem name', () {
+    const configuration = FVideoFvpConfiguration(
+      platforms: {FVideoFvpPlatform.ohos, FVideoFvpPlatform.ios},
+    );
+
+    expect(configuration.toFvpOptions(), {
+      'platforms': ['ios', 'ohos'],
+    });
+  });
+
   test('typed options preserve advanced playback tuning', () {
     const configuration = FVideoFvpConfiguration(
       platforms: {
